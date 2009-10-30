@@ -8,20 +8,21 @@ APP_ROOT_DIR = os.path.abspath(os.path.dirname(__file__))
 DEBUG = os.environ['SERVER_SOFTWARE'].startswith('Dev')
 logging.info("Starting application in DEBUG mode: %s", DEBUG)
 
-# Don't change default_blog or default_page to prevent conflicts when merging #  Bloog source code updates.
+# Don't change default_blog or default_page to prevent conflicts when merging 
+#  Bloog source code updates.
 # Do change blog or page dictionaries at the bottom of this config module.
 
 BLOG = {
     "bloog_version": "0.8",
     "html_type": "text/html",
     "charset": "utf-8",
-    "title": "Bloog",
-    "author": "Bill Katz",
+    "title": "Medi@rcade!",
+    "author": "Tom Nichols",
     # This must be the email address of a registered administrator for the 
     # application due to mail api restrictions.
-    "email": "you@foo.com",
-    "description": "A RESTful Blog/Homepage for Google AppEngine.",
-    "root_url": "http://bloog.billkatz.com",
+    "email": "tmnichols@gmail.com",
+    "description": "Technology is evolution outside the gene pool",
+    "root_url": "http://mediarcade.appspot.com",
     "master_atom_url": "/feeds/atom.xml",
     # By default, visitors can comment on article for this many days.
     # This can be overridden by setting article.allow_comments
