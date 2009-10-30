@@ -32,10 +32,9 @@ YAHOO.bloog.toggleDiv = function (e) {
         archives.style.display = 'none';
     }
 }
-YAHOO.bloog.initArchive = function () {
-    YAHOO.util.Event.addListener("archiveLink", "click", YAHOO.bloog.toggleDiv);
-}
-YAHOO.util.Event.onDOMReady(YAHOO.bloog.initArchive);
+YAHOO.util.Event.onDOMReady( function() {
+  YAHOO.util.Event.addListener("archiveLink", "click", YAHOO.bloog.toggleDiv);
+});
 
 // Some handlers that get used by multiple javascript modules
 
