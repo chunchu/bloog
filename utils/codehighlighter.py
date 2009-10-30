@@ -32,9 +32,8 @@ language_jsfiles = {
     'ruby': 'Ruby',
     'js': 'JScript',
     'html': 'Xml',
-    'php': 'Php',
-    'css': 'Css',
-    'cpp': 'Cpp'
+    'groovy': 'Groovy',
+    'css': 'Css'
 }
 
 def process_html(html):
@@ -50,8 +49,7 @@ def process_html(html):
       The modified html and a list of strings giving the embedded
       code languages.
     """
-    code_tag = re.compile('\s*<pre name="code" class="([^"]+)">', 
-                          re.MULTILINE)
+    code_tag = re.compile('\s*<pre class="brush: ([^"]+)">', re.MULTILINE)
     languages = set([])
     soup = BeautifulSoup(html)
     clean_html = ''

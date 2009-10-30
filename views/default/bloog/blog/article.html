@@ -1,11 +1,14 @@
 {% extends "base.html" %}
 
-{% if article.embedded_code %}
 {% block head %}
-<link type="text/css" rel="stylesheet" href="/static/syntaxhighlighter/SyntaxHighlighter.css"></link>
+{% if article.embedded_code %}
+<link rel="stylesheet" type="text/css" 
+  href="http://alexgorbatchev.com/pub/sh/current/styles/shCore.css" />
+<link rel="stylesheet" type="text/css" 
+  href="http://alexgorbatchev.com/pub/sh/current/styles/shThemeFadeToGrey.css" />
+{% endif %}
 <meta name="description" content="{{article.html|description}}" />
 {% endblock %}
-{% endif %}
 
 {% block first_column %}
 {% if two_columns %}
@@ -78,13 +81,16 @@
 {% endif %}
 
 {% if article.embedded_code %}
-<script language="javascript" src="/static/syntaxhighlighter/shCore.js"></script>
+<script type='text/javascript' 
+  src='http://alexgorbatchev.com/pub/sh/current/scripts/shCore.js'></script>
 {% for language in article.embedded_code %}
-<script language="javascript" src="/static/syntaxhighlighter/shBrush{{ language }}.js"></script>
+<script type='text/javascript' 
+  src='http://alexgorbatchev.com/pub/sh/current/scripts/shBrush{{ language }}.js'></script>
 {% endfor %}
 <script language="javascript">
-dp.SyntaxHighlighter.ClipboardSwf = '/static/syntaxhighlighter/clipboard.swf';
-dp.SyntaxHighlighter.HighlightAll('code');
+  SyntaxHighlighter.defaults['gutter'] = false;
+  //  SyntaxHighlighter.defaults['light'] = true;
+  SyntaxHighlighter.all();
 </script>
 {% endif %}
 
