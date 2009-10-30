@@ -10,15 +10,17 @@
   left: 5px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-rubybtn span.yui-toolbar-icon {
-  background-image: url(/static/default/images/rb.gif);
-  background-position: 1px 0px;
-  left: 5px;
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-groovybtn span.yui-toolbar-icon {
+  background-image: url(/static/default/images/groovy.gif);
+  background-position: 0px 0px;
+  left: 2px;
+  width: 24px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-rubybtn-selected span.yui-toolbar-icon {
-  background-image: url(/static/default/images/rb.gif);
-  background-position: 1px 0px;
-  left: 5px;
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-groovybtn-selected span.yui-toolbar-icon {
+  background-image: url(/static/default/images/groovy.gif);
+  background-position: 0px 0px;
+  left: 2px;
+  width: 24px;
 }
 
 .yui-skin-sam .yui-toolbar-container .yui-toolbar-jsbtn span.yui-toolbar-icon {
@@ -32,14 +34,14 @@
   left: 5px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-phpbtn span.yui-toolbar-icon {
-  background-image: url(/static/default/images/php.gif);
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-javabtn span.yui-toolbar-icon {
+  background-image: url(/static/default/images/java.gif);
   background-position: 0px 0px;
   left: 3px;
   width: 22px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-phpbtn-selected span.yui-toolbar-icon {
-  background-image: url(/static/default/images/php.gif);
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-javabtn-selected span.yui-toolbar-icon {
+  background-image: url(/static/default/images/java.gif);
   background-position: 0px 0px;
   left: 3px;
   width: 22px;
