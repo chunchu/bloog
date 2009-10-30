@@ -28,7 +28,7 @@ h3{font-size:16px;}
 h4{font-size:14px;}
 a{color:#333;text-decoration:none;}
 a:hover{color:#666;}
-#wrapper{border-top:3px solid #EEE;margin:20px auto;text-align:left;width:965px;} 
+#wrapper{border-top:3px solid #EEE;margin:10px auto;text-align:left;width:825px;} 
 #wrapper pre, #wrapper p { clear: none; }  
 th,td{padding:3px 20px 3px 0px;}
 
@@ -41,9 +41,9 @@ th,td{padding:3px 20px 3px 0px;}
 
 /* masthead / footer - navigation and categories */
 #masthead{padding:5px 0;}
-#masthead h1 a{text-transform:uppercase;width:400px;float:left;margin:12px 0 0 0;}
+#masthead h1 a{width:300px;float:left;margin:12px 0 0 0;}
 #masthead h1 a em{font-style:normal;color:#555;}
-#authorBlurb img{float:right;width:42px;height:42px;border:3px solid #EEE;}
+#authorBlurb img{float:right;width:48px;height:48px;}
 #authorIntro a{font-weight:bold;} 
 #authorIntro{line-height:1.4em;width:400px;float:right;margin:8px 0 0 0;}
 ul.nav{list-style:none;background:#EEE;}
@@ -68,12 +68,12 @@ li.top a{width:100px;}
 #poweredby {float:right;width:120px;height:30px;}
 
 /* main - middle content and columns */
-#mid{}#mainCol{float:left;margin:26px 0 0 0;width:435px;}
-#mid{}#twoCol{float:left;margin:26px 0 0 0;width:649px;}
+#mid{}#mainCol{float:left;margin:26px 0 0 0;width:508px;}
+#mid{}#twoCol{float:left;margin:26px 0 0 0;width:508px;}
 
 /* style individual sidebars */
 #midCol ul a{font-weight:bold;}
-#midCol{color:#444;float:left;margin:25px 0 0 33px;width:250px;line-height:1.3em;}
+#midCol{color:#444;float:left;margin:25px 0 0 62px;width:250px;line-height:1.3em;}
 #midCol p{color:#777;}
 #searchWrap,
 .middle_links{margin-bottom:20px;}
@@ -119,6 +119,7 @@ ul#imgLinks{list-style:none;margin:7px 0;}
 .entry a:hover img{border-color:#DFDFDF;}
 .entry table tr { padding: 15px 0; }
 .entry table tr.alt { background: #eee; }
+.syntaxhighlighter code { display: inline }
 
 /* style pagination buttons */
 #more_reading { color: #7F7F7F; font-size: 11px; text-transform: uppercase; margin-bottom: 25px; text-align: right; }
