@@ -66,42 +66,35 @@ PAGE = {
           "url": "/contact"},
     ],
     "featuredMyPages": {
-        "title": "Bloog Development",
-        "description": "Get involved",
+        "title": "About Me",
+        "description": """I'm a software Engineer living near Providence, RI. &nbsp;
+          I code for work, freelance, and when an idea strikes me, sometimes 
+          just for fun.""",
         "entries": [
-            { "title": "Source Code", 
-              "url": "http://github.com/DocSavage/bloog", 
-              "description": "GitHub repository" },
-            { "title": "Tarball", 
-              "url": "http://github.com/DocSavage/bloog/tarball/master", 
-              "description": "Most recent snapshot" },
-            { "title": "Group", 
-              "url": "http://groups.google.com/group/bloog/topics", 
-              "description": "Developer discussion" },
-            { "title": "Author's Bloog", 
-              "url": "http://www.billkatz.com", 
-              "description": "What's brewing" },
-            { "title": "Architecture Diagram", 
-              "url": "/static/images/architecture2.png", 
-              "description": "RESTful Bloog" }
+            { "title": "On Twitter", 
+              "url": "http://twitter.com/tom_nichols", 
+              "description": "Twitter Feed" },
+            { "title": "On GitHub", 
+              "url": "http://github.com/tomstrummer", 
+              "description": "Projects hosted on Github" },
+            { "title": "HTTP Builder", 
+              "url": "http://groovy.codehaus.org/modules/http-builder", 
+              "description": "One of my more significant open-source contributions" },
+            { "title": "My Google Reader Feed", 
+              "url": "https://www.google.com/reader/shared/00209487153858041827", 
+              "description": "Interesting articles worth passing along" }
         ]
     },
     "featuredOthersPages": {
-        "title": "Google App Engine",
-        "description": "Developer Resources",
+        "title": "Additional Links",
+        "description": "Miscellaneous Resources",
         "entries": [
             { "title": "Google App Engine", 
               "url": "http://code.google.com/appengine/", 
               "description": "The mothership" },
-            { "title": "App Engine Group", 
-              "url": "http://groups.google.com/group/google-appengine", 
-              "description": "Developer group" },
-            { "title": "App Engine Open Source", 
-              "url": "http://groups.google.com/group/google-appengine/web/google-app-engine-open-source-projects", 
-              "description": "Code!" },
-            { "title": "App Engine Console", 
-              "url": "http://appengine.google.com", 
-              "description": "Your apps" }
+            { "title": "Groovy", 
+              "url": "http://groovy.codehaus.org", 
+              "description": "Programming language of choice" }
         ]
     },
 }
