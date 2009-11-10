@@ -7,8 +7,8 @@
         <link rel="stylesheet" href="/static/default/style.css" type="text/css" media="screen,print" />
         <link rel="alternate" type="application/rss+xml" title="{{ blog.title }} RSS Feed" 
               href="{{ blog.root_url }}{{ blog.master_atom_url }}" />
-        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.5.2/build/assets/skins/sam/skin.css" />
-        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.5.2/build/container/assets/skins/sam/container.css" />
+        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/{{yui_version}}/build/assets/skins/sam/skin.css" />
+        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/{{yui_version}}/build/container/assets/skins/sam/container.css" />
         {% block head %}
         {% endblock %}
     </head>
@@ -249,7 +249,8 @@
             </div>
         </div>
 
-        <script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/yahoo-dom-event/yahoo-dom-event.js"></script>
+        <script type="text/javascript" src="http://yui.yahooapis.com/{{yui_version}}/build/yahoo-dom-event/yahoo-dom-event.js"></script>
+        <script src="http://yui.yahooapis.com/3.0.0/build/yui/yui-min.js"></script> 
         <script type="text/javascript" src="/static/default/js/bloog_base.js"></script>
 
         {% if user_is_admin %}

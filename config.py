@@ -59,6 +59,7 @@ BLOG = {
 PAGE = {
     "title": BLOG["title"],
     "articles_per_page": 5,
+    "yui_version":'2.8.0r4',
     "navlinks": [
         { "title": "Articles", "description": "Bits of Info", 
           "url": "/articles"},
