@@ -63,23 +63,42 @@ YAHOO.bloog.initAdmin = function() {
 
     YAHOO.bloog.populateDialog = function(o) {
         var article = eval('(' + o.responseText + ')')
-        document.getElementById("postTitle").value = article.title;
-        if (article.tags) {
-            document.getElementById("postTags").value = article.tags.join(', ');
-        }
-        YAHOO.bloog.editor.setEditorHTML(article.body);
+        YAHOO.util.Dom.get("postTitle").value = article.title;
+        if (article.tags) 
+            YAHOO.util.Dom.get("postTags").value = article.tags.join(', ');
+        console.debug( article );
+        YAHOO.util.Dom.get("postDate").value = article.published;
+        YAHOO.bloog.editor.setEditorHTML( article.body );
         YAHOO.bloog.postDialog.render();
         YAHOO.bloog.postDialog.show();
-    }
+    };
 
+    YAHOO.bloog.formatDate = function( date ) {
+      var dtFormat = '';
+      dtFormat += date.getFullYear() + '-' ;
+      var v = (date.getMonth()+1);
+      dtFormat += (v<10?'0':'') + v + '-' ;
+      v = date.getDate();
+      dtFormat += (v<10?'0':'') + v + ' ' ;
+      v = date.getHours();
+      dtFormat += (v<10?'0':'') + v + ':' ;
+      v = date.getMinutes();
+      dtFormat += (v<10?'0':'') + v + ':' ;
+      v = date.getSeconds();
+      dtFormat += (v<10?'0':'') + v;
+      return dtFormat;
+    };
+    
     var handleSubmit = function() {
         YAHOO.bloog.editor.saveHTML();
         var html = YAHOO.bloog.editor.get('element').value;
         var title = YAHOO.util.Dom.get('postTitle').value;
         var tags = YAHOO.util.Dom.get('postTags').value;
+        var publishDt = YAHOO.util.Dom.get('postDate').value;
         var postData = 'title=' + encodeURIComponent(title) + '&' +
                        'tags=' + encodeURIComponent(tags) + '&' +
-                       'body=' + encodeURIComponent(html);
+                       'body=' + encodeURIComponent(html) + 
+                       'published=' + encodeURIComponent(publishDt);
         var cObj = YAHOO.util.Connect.asyncRequest(
             YAHOO.bloog.http.verb, 
             YAHOO.bloog.http.action, 
@@ -248,20 +267,37 @@ YAHOO.bloog.initAdmin = function() {
         }, this, true);
         **/
     }, YAHOO.bloog.editor, true);
-
     YAHOO.bloog.editor.render();
-    YAHOO.bloog.postDialog.showEvent.subscribe( function() {
+    
+    YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'none' );
+    YAHOO.bloog.postDialog.beforeShowEvent.subscribe( function() {
       YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'block' ) },
       YAHOO.bloog.postDialog, true );
     YAHOO.bloog.postDialog.hideEvent.subscribe( function() {
       YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'none' ) },
       YAHOO.bloog.postDialog, true );
+      
     YAHOO.bloog.postDialog.showEvent.subscribe(YAHOO.bloog.editor.show,
                                                YAHOO.bloog.editor, true);
     YAHOO.bloog.postDialog.hideEvent.subscribe(YAHOO.bloog.editor.hide,
                                                YAHOO.bloog.editor, true);
-    YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'none' );
     
+    YAHOO.bloog.calendar = new YAHOO.widget.Calendar( 'cal1', 
+      "postDateContainer", {close:true, title:"Choose a Date"} );
+    YAHOO.bloog.calendar.render();
+    YAHOO.bloog.calendarCloseHandler = function() {
+      YAHOO.bloog.calendar.hide();
+    };
+    YAHOO.bloog.dateSelectHandler = function() {
+      var dt = YAHOO.bloog.calendar.getSelectedDates()[0];
+      YAHOO.util.Dom.get("postDate").value = YAHOO.bloog.formatDate(dt);
+      YAHOO.bloog.calendar.hide();
+    };
+
+    YAHOO.bloog.calendar.selectEvent.subscribe( 
+      YAHOO.bloog.dateSelectHandler, YAHOO.bloog.calendar, true );
+    YAHOO.util.Event.addListener( 'postDate', 'click', 
+      YAHOO.bloog.calendar.show, YAHOO.bloog.calendar, true );
 
     var handleDelete = function() {
         var cObj = YAHOO.util.Connect.asyncRequest(

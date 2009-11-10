@@ -37,10 +37,15 @@ th,td{padding:3px 20px 3px 0px;}
 .popupDialog form p{margin-bottom:7px;}
 .popupDialog form label{width: 400px;}
 .popupDialog form input{width: 400px;}
+.popupDialog form .row.left { float: left; margin-right: 20px }
+.popupDialog form .row label{width: 170px;}
+.popupDialog form .row input{width: 170px;}
 .popupDialog form textarea{width: 400px; margin:0px 5px;}
+#postBody_container {clear:both}
+#postDateContainer { position: absolute; z-index: 2; display:none }
 
 /* masthead / footer - navigation and categories */
-#masthead{padding:5px 0;}
+#masthead{padding:5px 0; background:transparent url(images/masthead-bg.png) top left no-repeat}
 #masthead h1 a{width:300px;float:left;margin:12px 0 0 0;}
 #masthead h1 a em{font-style:normal;color:#555;}
 #authorBlurb img{float:right;width:48px;height:48px;}
