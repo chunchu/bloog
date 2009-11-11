@@ -62,11 +62,10 @@ YAHOO.bloog.initAdmin = function() {
     }
 
     YAHOO.bloog.populateDialog = function(o) {
-        var article = eval('(' + o.responseText + ')')
+        var article = YAHOO.lang.JSON.parse( o.responseText );
         YAHOO.util.Dom.get("postTitle").value = article.title;
         if (article.tags) 
             YAHOO.util.Dom.get("postTags").value = article.tags.join(', ');
-        console.debug( article );
         YAHOO.util.Dom.get("postDate").value = article.published;
         YAHOO.bloog.editor.setEditorHTML( article.body );
         YAHOO.bloog.postDialog.render();
@@ -95,10 +94,10 @@ YAHOO.bloog.initAdmin = function() {
         var title = YAHOO.util.Dom.get('postTitle').value;
         var tags = YAHOO.util.Dom.get('postTags').value;
         var publishDt = YAHOO.util.Dom.get('postDate').value;
-        var postData = 'title=' + encodeURIComponent(title) + '&' +
-                       'tags=' + encodeURIComponent(tags) + '&' +
-                       'body=' + encodeURIComponent(html) + 
-                       'published=' + encodeURIComponent(publishDt);
+        var postData = 'title=' + encodeURIComponent(title) + 
+                       '&tags=' + encodeURIComponent(tags) + 
+                       '&published=' + encodeURIComponent(publishDt) +
+                       '&body=' + encodeURIComponent(html) ;
         var cObj = YAHOO.util.Connect.asyncRequest(
             YAHOO.bloog.http.verb, 
             YAHOO.bloog.http.action, 
@@ -201,7 +200,7 @@ YAHOO.bloog.initAdmin = function() {
                     ]
                 },
                 { type: 'separator' },
-                { group: 'indentlist', label: 'Indenting and Lists',
+                { group: 'indentlist', label: 'Indenting',
                     buttons: [
                         { type: 'push', label: 'Indent', value: 'indent', disabled: true },
                         { type: 'push', label: 'Outdent', value: 'outdent', disabled: true },
