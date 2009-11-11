@@ -21,22 +21,7 @@
  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
  DEALINGS IN THE SOFTWARE.
 **/
-
-YAHOO.namespace("bloog");
-
-YAHOO.bloog.toggleDiv = function (e) {
-    var archives = document.getElementById("archives");
-    if (archives.style.display == 'none') {
-        archives.style.display = 'block';
-    } else {
-        archives.style.display = 'none';
-    }
-}
-YAHOO.util.Event.onDOMReady( function() {
-  YAHOO.util.Event.addListener("archiveLink", "click", YAHOO.bloog.toggleDiv);
-});
-
-// Some handlers that get used by multiple javascript modules
+YAHOO.namespace('bloog');
 
 YAHOO.bloog.handleSuccess = function (o) {
     var response = o.responseText;
@@ -49,4 +34,14 @@ YAHOO.bloog.handleFailure = function (o) {
 };
 YAHOO.bloog.handleCancel = function () {
     this.cancel();
-}
+};
+
+$.onDOMReady(function() {
+  $('#archiveLink').on('click', function(elem,e) {
+    e.stopEvent();
+    var archives = $('#archives').node;
+    archives.style.display = ( archives.style.display == 'none' ) ?
+      archives.style.display = 'block' : archives.style.display= 'none';
+  });
+});
+
