@@ -1,9 +1,10 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require ojay/core-min
-// @require ojay/pkg/http-min
+
 /**
  * <p>The <tt>Paginator</tt> class is used to replace large blocks of content with a smaller,
  * scrollable area with an API for controlling the area. The content will typically be made up
@@ -60,7 +61,7 @@ Licensed under the BSD license, http://ojay.othermedia.org/license.html
  * @constructor
  * @class Paginator
  */
-Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
+Ojay.Paginator = new JS.Class('Ojay.Paginator', /** @scope Ojay.Paginator.prototype */{
     include: [Ojay.Observable, JS.State],
     
     extend: /** @scope Ojay.Paginator */{
@@ -68,8 +69,24 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
         PAGE_CLASS:         'page',
         ITEM_CLASS:         'item',
         SCROLL_TIME:        0.5,
+        PUSH_FADE_TIME:     0.7,
+        PUSH_SLIDE_TIME:    0.3,
         DIRECTION:          'horizontal',
-        EASING:             'easeBoth'
+        EASING:             'easeBoth',
+        
+        /**
+         * @param {Number} width
+         * @param {Number} height
+         * @returns {DomCollection}
+         */
+        makePageElement: function(width, height) {
+            var div = Ojay( Ojay.HTML.div({className: this.PAGE_CLASS}) );
+            div.setStyle({
+                'float': 'left', width: width + 'px', height: height + 'px',
+                margin: '0 0 0 0', padding: '0 0 0 0', border: 'none'
+            });
+            return div;
+        }
     },
     
     /**
@@ -93,8 +110,12 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
         
         options = this._options = options || {};
         options.scrollTime = options.scrollTime || this.klass.SCROLL_TIME;
-        options.direction = options.direction || this.klass.DIRECTION;
-        options.easing = options.easing || this.klass.EASING;
+        options.pushFade   = options.pushFade   || this.klass.PUSH_FADE_TIME;
+        options.pushSlide  = options.pushSlide  || this.klass.PUSH_SLIDE_TIME;
+        options.direction  = options.direction  || this.klass.DIRECTION;
+        options.easing     = options.easing     || this.klass.EASING;
+        options.looped     = !!options.looped;
+        options.infinite   = !!options.infinite;
         
         this.setState('CREATED');
     },
@@ -108,10 +129,12 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
     
     /**
      * @param {Object} state
+     * @param {Function} callback
+     * @param {Object} scope
      * @returns {Paginator}
      */
-    changeState: function(state) {
-        if (state.page !== undefined) this._handleSetPage(state.page);
+    changeState: function(state, callback, scope) {
+        if (state.page !== undefined) this._handleSetPage(state.page, callback, scope);
         return this;
     },
     
@@ -152,6 +175,14 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
     },
     
     /**
+     * <p>Returns a boolean to indicate whether the paginator loops.</p>
+     * @returns {Boolean}
+     */
+    isLooped: function() {
+        return !!this._options.looped || !!this._options.infinite;
+    },
+    
+    /**
      * <p>Returns an Ojay collection wrapping the wrapper element added to your document to
      * contain the original content element and let it slide.</p>
      * @returns {DomCollection}
@@ -180,6 +211,21 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
     },
     
     /**
+     * @returns {Number}
+     */
+    getTotalOffset: function() {
+        var method = (this._options.direction == 'vertical') ? 'getHeight' : 'getWidth';
+        return this.getRegion()[method]() * (this._numPages - 1);
+    },
+    
+    /**
+     * @returns {Number}
+     */
+    getCurrentOffset: function() {
+        return this._reportedOffset;
+    },
+    
+    /**
      * <p>Returns an Ojay collection wrapping the child elements of the subject.</p>
      * @returns {DomCollection}
      */
@@ -204,8 +250,8 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
         var containerRegion = this.getRegion(), itemRegion = items.at(0).getRegion();
         this._itemWidth     = itemRegion.getWidth();
         this._itemHeight    = itemRegion.getHeight();
-        this._itemsPerCol   = (containerRegion.getWidth() / this._itemWidth).floor() || 1;
-        this._itemsPerRow   = (containerRegion.getHeight() / this._itemHeight).floor() || 1;
+        this._itemsPerCol   = (containerRegion.getHeight() / this._itemHeight).floor() || 1;
+        this._itemsPerRow   = (containerRegion.getWidth() / this._itemWidth).floor() || 1;
         this._itemsPerPage  = this._itemsPerRow * this._itemsPerCol;
         this._numPages = (items.length / this._itemsPerPage).ceil();
         if (this._options.grouping !== false) this._groupItemsByPage();
@@ -219,18 +265,22 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
      */
     _groupItemsByPage: function() {
         var containerRegion = this.getRegion(),
-            width = containerRegion.getWidth(), height = containerRegion.getHeight(),
-            n = this._itemsPerPage, allItems = this._elements._items.toArray();
+            width           = containerRegion.getWidth(),
+            height          = containerRegion.getHeight(),
+            n               = this._itemsPerPage,
+            allItems        = this._elements._items.toArray();
+        
+        this._elements._pages = [];
+        
         this._numPages.times(function(i) {
             var items = allItems.slice(i * n, (i+1) * n);
-            var div = Ojay( Ojay.HTML.div({className: this.klass.PAGE_CLASS}) );
-            div.setStyle({
-                'float': 'left', width: width + 'px', height: height + 'px',
-                margin: '0 0 0 0', padding: '0 0 0 0', border: 'none'
-            });
+            var div = this.klass.makePageElement(width, height);
             items.forEach(div.method('insert'));
+            this._elements._pages.push(div);
             this._elements._subject.insert(div.node);
         }, this);
+        
+        this._dummyPage = this.klass.makePageElement(width, height);
     },
     
     /**
@@ -298,9 +348,21 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
                 
                 var state = this.getInitialState();
                 this.setState('READY');
-                this._currentPage = state.page;
-                this._handleSetPage(state.page);
+                if (this._currentPage === undefined) this._currentPage = state.page;
+                this._handleSetPage(this._currentPage);
                 
+                return this;
+            },
+            
+            /**
+             * <p>Sets the initial page for the paginator to start at when in the CREATED
+             * state. No scrolling takes place, and the number set will override the initial
+             * page setting and any setting pulled in by the history manager.</p>
+             * @param {Number} page
+             * @returns {Paginator}
+             */
+            setPage: function(page) {
+                this._currentPage = Number(page);
                 return this;
             }
         },
@@ -315,21 +377,27 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * element. Will fire a <tt>pagechange</tt> event if the page specified is not
              * equal to the current page.</p>
              * @param {Number} page
+             * @param {Function} callback
+             * @param {Object} scope
              * @returns {Paginator}
              */
-            setPage: function(page) {
+            setPage: function(page, callback, scope) {
                 page = Number(page);
-                if (page == this._currentPage || page < 1 || page > this._numPages) return this;
-                this.changeState({page: page});
+                if (this._options.looped && page < 1) page += this._numPages;
+                if (this._options.looped && page > this._numPages) page -= this._numPages;
+                if (!this.isLooped() && (page == this._currentPage || page < 1 || page > this._numPages)) return this;
+                this.changeState({page: page}, callback, scope);
                 return this;
             },
             
             /**
              * <p>Handles request to <tt>changeState()</tt>.</p>
              * @param {Number} page
+             * @param {Function} callback
+             * @param {Object} scope
              */
-            _handleSetPage: function(page) {
-                this.setScroll((page - 1) / (this._numPages - 1), {animate: true});
+            _handleSetPage: function(page, callback, scope) {
+                this.setScroll(this.getTotalOffset() * (page - 1) / (this._numPages - 1), {animate: true}, callback, scope);
             },
             
             /**
@@ -337,7 +405,20 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * @returns {Paginator}
              */
             incrementPage: function() {
-                return this.setPage(this._currentPage + 1);
+                var wrapping  = this._options.infinite && (this._currentPage == this._numPages),
+                    firstPage = this._elements._pages[0];
+                
+                if (wrapping)
+                    this._elements._subject
+                      .insert(firstPage, 'bottom')
+                      .insert(this._dummyPage, 'top');
+                
+                return this.setPage(this._currentPage + 1, function() {
+                    if (!wrapping) return;
+                    this._dummyPage.remove();
+                    this._elements._subject.insert(firstPage, 'top');
+                    this.setScroll(0, {animate: false, silent: true});
+                }, this);
             },
             
             /**
@@ -345,7 +426,24 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * @returns {Paginator}
              */
             decrementPage: function() {
-                return this.setPage(this._currentPage - 1);
+                var wrapping = this._options.infinite && (this._currentPage == 1),
+                    property = (this._options.direction == 'vertical') ? 'marginTop' : 'marginLeft',
+                    lastPage = this._elements._pages[this._numPages - 1],
+                    settings = {};
+                
+                if (wrapping) {
+                    this._elements._subject.insert(lastPage, 'top');
+                    settings[property] = (-this.getTotalOffset() / (this._numPages - 1)) + 'px';
+                    this._elements._subject.setStyle(settings);
+                }
+                
+                return this.setPage(this._currentPage - 1, function() {
+                    if (!wrapping) return;
+                    this._elements._subject.insert(lastPage, 'bottom');
+                    settings[property] = 0;
+                    this._elements._subject.setStyle(settings);
+                    this.setScroll(1, {animate: false, silent: true});
+                }, this);
             },
             
             /**
@@ -386,15 +484,20 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * set to <tt>true</tt> will prevent any <tt>scroll</tt> events from firing.</p>
              * @param {Number} amount
              * @param {Object} options
+             * @param {Function} callback
+             * @param {Object} scope
              * @returns {Paginator}
              */
-            setScroll: function(amount, options) {
-                var orientation = this._options.direction, settings;
-                var method = (orientation == 'vertical') ? 'getHeight' : 'getWidth';
-                var pages = this._numPages, total = this.getRegion()[method]() * (pages - 1);
+            setScroll: function(amount, options, callback, scope) {
+                var options     = options || {},
+                    orientation = this._options.direction,
+                    scrollTime  = options._scrollTime || this._options.scrollTime,
+                    pages       = this._numPages,
+                    total       = this.getTotalOffset(),
+                    chain       = new JS.MethodChain(),
+                    settings;
                 
                 if (amount >= 0 && amount <= 1) amount = amount * total;
-                if (amount < 0 || amount > total) return this;
                 
                 this._elements._items.removeClass('focused');
                 options = options || {};
@@ -405,8 +508,10 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
                             ? { top: {to: -amount} }
                             : { left: {to: -amount} };
                     this._elements._subject.animate(settings,
-                        this._options.scrollTime, {easing: this._options.easing})._(function(self) {
+                        scrollTime, {easing: this._options.easing})._(function(self) {
                         self.setState('READY');
+                        chain.fire(scope || self);
+                        if (callback) callback.call(scope || null);
                     }, this);
                 } else {
                     settings = (orientation == 'vertical')
@@ -415,24 +520,221 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
                     this._elements._subject.setStyle(settings);
                 }
                 
-                if (!options.silent) this.notifyObservers('scroll', amount/total, total);
+                var reportedOffset = amount/total;
+                if (reportedOffset < 0) reportedOffset = 1;
+                if (reportedOffset > 1) reportedOffset = 0;
+                this._reportedOffset = amount;
                 
-                var page = (pages * (amount/total)).ceil() || 1;
+                if (!options.silent) this.notifyObservers('scroll', reportedOffset, total);
+                
+                var page = (pages * reportedOffset).ceil() || 1;
                 if (page != this._currentPage) {
                     this._currentPage = page;
                     this.notifyObservers('pagechange', page);
                     
                     if (page == 1) this.notifyObservers('firstpage');
-                    if (page == this._numPages) this.notifyObservers('lastpage');
+                    if (page == pages) this.notifyObservers('lastpage');
                 }
                 
+                return (options.animate && YAHOO.util.Anim) ? chain : this;
+            },
+            
+            /**
+             * <p>Pushes a new element onto the end of the list of elements contained in the
+             * <tt>Paginator</tt>, creating a new page and firing the <tt>pagecreate</tt>
+             * event if necessary. The <tt>n</tt> parameter is for internal use only, for when
+             * items need to be moved across page boundaries by <tt>shift</tt>/<tt>unshift</tt>
+             * operations.</p>
+             * @param {HTMLElement} element
+             * @param {Number} n
+             * @returns {Paginator}
+             */
+            push: function(element, n) {
+                n = (n === undefined) ? this._numPages - 1 : n;
+                var last = (n === this._numPages - 1);
+                if (last) this._checkPages();
+                
+                element = Ojay(element).setStyle({margin: '0 0 0 0'});
+                var page = this._elements._pages[last ? this._numPages - 1 : n];
+                
+                page.insert(element, 'bottom');
+                this.notifyObservers('itemadd');
+                
+                var items = this._elements._items;
+                if (last) [].push.call(items, element.node);
+                
                 return this;
+            },
+            
+            /**
+             * <p>Removes the final item from the final page of the <tt>Paginator</tt>. If
+             * the final page subsequently contains no items, it is removed and a
+             * <tt>pagedestroy</tt> event is fired. The <tt>n</tt> parameter is for internal
+             * use only, for when items need to be moved across page boundaries by
+             * <tt>shift</tt>/<tt>unshift</tt> operations.</p>
+             * @param {Number} n
+             * @returns {DomCollection}
+             */
+            pop: function(n) {
+                n = (n === undefined) ? this._numPages - 1 : n;
+                var last = (n === this._numPages - 1);
+                
+                var page = this._elements._pages[n],
+                    item = Ojay(page.children().toArray().pop());
+                
+                this.notifyObservers('itemremove');
+                if (!last) return item.remove();
+                
+                this._elements._items = this._elements._items.filter(function(member) {
+                    return member.node !== item.node;
+                });
+                if (last) this._checkPages();
+                
+                return item.remove();
+            },
+            
+            /**
+             * <p>Removes the first item from the first page of the <tt>Paginator</tt>. If
+             * the final page subsequently contains no items, it is removed and a
+             * <tt>pagedestroy</tt> event is fired. The <tt>n</tt> parameter is for internal
+             * use only, for when items need to be moved across page boundaries by
+             * <tt>shift</tt>/<tt>unshift</tt> operations.</p>
+             * @param {Number} n
+             * @returns {DomCollection}
+             */
+            shift: function(n) {
+                n = (n === undefined) ? 0 : n;
+                var first = (n === 0);
+                var page = this._elements._pages[n],
+                    item = page.children().at(0);
+                
+                this.notifyObservers('itemremove');
+                if (!first) return item.remove();
+                
+                for (var i = 1; i < this._numPages; i++)
+                    this.push(this.shift(i), i-1);
+                
+                this._elements._items = this._elements._items.filter(function(member) {
+                    return member.node !== item.node;
+                });
+                this._checkPages();
+                
+                return item.remove();
+            },
+            
+            /**
+             * <p>Pushes a new element onto the start of the list of elements contained in the
+             * <tt>Paginator</tt>, creating a new page and firing the <tt>pagecreate</tt>
+             * event if necessary. The <tt>n</tt> parameter is for internal use only, for when
+             * items need to be moved across page boundaries by <tt>shift</tt>/<tt>unshift</tt>
+             * operations.</p>
+             * @param {HTMLElement} element
+             * @param {Number} n
+             * @returns {Paginator}
+             */
+            unshift: function(element, n) {
+                if (typeof n == 'object' && n.animate) return this._animatedUnshift(element);
+                
+                n = (n === undefined) ? 0 : n;
+                var first = (n === 0);
+                if (first) this._checkPages();
+                
+                element = Ojay(element).setStyle({margin: '0 0 0 0'});
+                var page = this._elements._pages[n];
+                
+                page.insert(element, 'top');
+                this.notifyObservers('itemadd');
+                if (!first) return this;
+                
+                for (var i = 1; i < this._numPages; i++)
+                    this.unshift(this.pop(i-1), i);
+                
+                var items = this._elements._items;
+                [].unshift.call(items, element.node);
+                
+                return this;
+            },
+            
+            /**
+             * @returns {MethodChain}
+             */
+            _animatedUnshift: function(element) {
+                if ((this._options.direction == 'vertical' && this._itemsPerRow > 1) ||
+                    (this._options.direction == 'horizontal' && this._itemsPerCol > 1))
+                    throw new Error('Cannot perform animated push/unshift ' +
+                                    'onto a Paginator with more than one ' +
+                                    'column and row');
+                
+                var item = Ojay(element).setStyle({opacity: 0});
+                
+                var current = this.getCurrentOffset(),
+                    
+                    nItems  = (this._options.direction == 'vertical') ?
+                              this._itemsPerCol : this._itemsPerRow,
+                    
+                    offset  = current - this.getTotalOffset() /
+                              (nItems * (this.getPages() - 1));
+                
+                return this.setScroll(offset, {animate: true, _scrollTime: this._options.pushSlide})
+                     .unshift(item)
+                     .setScroll(current)
+                     ._(item).animate({opacity: {to: 1}}, this._options.pushFade)
+                     ._(this);
+            },
+            
+            /**
+             * <p>Used by the <tt>push</tt>, <tt>pop</tt>, <tt>shift</tt> and <tt>unshift</tt>
+             * operations to decide whether pages need to be created or destroyed.</p>
+             */
+            _checkPages: function() {
+                var items   = this._elements._items.length,
+                    pages   = this._numPages,
+                    perPage = this._itemsPerPage,
+                    total   = pages * perPage;
+                
+                if (items == total) this._createPage();
+                if (items == total - perPage) this._destroyPage();
+            },
+            
+            /**
+             * <p>Adds a new page at the end of the <tt>Paginator</tt>, firing the
+             * <tt>pagecreate</tt> and <tt>scroll</tt> events.</p>
+             */
+            _createPage: function() {
+                var region = this.getRegion(),
+                    page = this.klass.makePageElement(region.getWidth(), region.getHeight());
+                this._elements._subject.insert(page, 'bottom');
+                this._elements._pages.push(page);
+                
+                this._numPages += 1;
+                var offset = (this._currentPage - 1) / (this._numPages - 1);
+                this.notifyObservers('pagecreate');
+                this.notifyObservers('scroll', offset, this.getTotalOffset());
+            },
+            
+            /**
+             * <p>Removes the final page of the <tt>Paginator</tt>, firing the
+             * <tt>pagedestroy</tt>, <tt>scroll</tt> and (if needed) the
+             * <tt>pagechange</tt> events.
+             */
+            _destroyPage: function() {
+                this._elements._pages.pop().remove();
+                if (this._currentPage == this._numPages) {
+                    this._currentPage -= 1;
+                    this.notifyObservers('pagechange', this._currentPage);
+                }
+                this._numPages -= 1;
+                var offset = (this._currentPage - 1) / (this._numPages - 1);
+                if (offset == 1) this.setScroll(1, {animate: true, silent: true});
+                this.notifyObservers('pagedestroy');
+                this.notifyObservers('scroll', offset, this.getTotalOffset());
             }
         },
         
         SCROLLING: {}
     }
 });
+
 
 /**
  * <p>The <tt>AjaxPaginator</tt> class extends the <tt>Paginator</tt> with functionality that
@@ -441,7 +743,7 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
  * @constructor
  * @class AjaxPaginator
  */
-Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.prototype */{
+Ojay.AjaxPaginator = new JS.Class('Ojay.AjaxPaginator', Ojay.Paginator, /** @scope Ojay.AjaxPaginator.prototype */{
     /**
      * <p><tt>AjaxPaginator</tt> takes the same initialization data as <tt>Paginator</tt>, but
      * with one extra required option: <tt>urls</tt>. This should be an array of URLs that
@@ -515,7 +817,12 @@ Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.
              * @param {Number} page
              */
             _handleSetPage: function(page) {
+                var n = this._options.urls.length;
+                if (page > n) page -= n;
+                if (page < 1) page += n;
+                
                 if (this.pageLoaded(page)) return this.callSuper();
+                
                 var _super = this.method('callSuper');
                 this.setState('REQUESTING');
                 this.loadPage(page, function() {
@@ -529,6 +836,7 @@ Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.
     }
 });
 
+
 /**
  * <p>The <tt>Paginator.Controls</tt> class implements a default UI for <tt>Paginator</tt>
  * instances, which includes previous/next links, individual page links, and event listeners
@@ -538,7 +846,7 @@ Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.
  * @class Paginator.Controls
  */
 Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
-    Controls: new JS.Class(/** @scope Ojay.Paginator.Controls.prototype */{
+    Controls: new JS.Class('Ojay.Paginator.Controls', /** @scope Ojay.Paginator.Controls.prototype */{
         extend: /** @scope Ojay.Paginator.Controls */{
             CONTAINER_CLASS:    'paginator-controls',
             PREVIOUS_CLASS:     'previous',
@@ -554,6 +862,8 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
         initialize: function(paginator) {
             this._paginator = paginator;
             this._elements = {};
+            this._paginator.on('pagecreate')._(this)._addPage();
+            this._paginator.on('pagedestroy')._(this)._removePage();
         },
         
         /**
@@ -566,21 +876,30 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
             if (this._paginator.inState('CREATED')) return null;
             var elements = this._elements, klass = this.klass, paginator = this._paginator;
             if (elements._container) return elements._container;
+            var self = this;
             
-            elements._container = Ojay( Ojay.HTML.div({className: klass.CONTAINER_CLASS}, function(HTML) {
+            elements._container = Ojay( Ojay.HTML.div(
+                {className: klass.CONTAINER_CLASS}, function(HTML) {
+            
                 // Previous button - decrements page
-                elements._previous = Ojay( HTML.div({className: klass.PREVIOUS_CLASS}, 'Previous') );
+                elements._previous = Ojay( HTML.div(
+                        {className: klass.PREVIOUS_CLASS},
+                        'Previous') );
+                
                 // Page buttons - skip to individual pages
-                elements._pageLinks = Ojay( HTML.div({className: klass.PAGE_LINKS_CLASS}, function(HTML) {
+                elements._pageLinks = Ojay( HTML.div(
+                    {className: klass.PAGE_LINKS_CLASS}, function(HTML) {
                     elements._pages = [];
                     paginator.getPages().times(function(page) {
-                        var span = elements._pages[page] = Ojay( HTML.span(String(page + 1)) );
-                        span.on('mouseover').addClass('hovered');
-                        span.on('mouseout').removeClass('hovered');
+                        var span = elements._pages[page] = self._makeLink(page+1);
+                        HTML.concat(span.node);
                     });
                 }) );
+                
                 // Next button - increments page
-                elements._next = Ojay( HTML.div({className: klass.NEXT_CLASS}, 'Next') );
+                elements._next = Ojay( HTML.div(
+                        {className: klass.NEXT_CLASS},
+                        'Next') );
             }) );
             
             elements._previous.on('click')._(paginator).decrementPage();
@@ -607,13 +926,50 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
             this._highlightPage(page);
             
             // Disable previous and next buttons at the ends of the run
-            paginator.on('firstpage')._(elements._previous).addClass('disabled');
-            paginator.on('lastpage')._(elements._next).addClass('disabled');
-            if (page == 1) elements._previous.addClass('disabled');
-            if (page == paginator.getPages()) elements._next.addClass('disabled');
+            if (!paginator.isLooped()) {
+                paginator.on('firstpage')._(elements._previous).addClass('disabled');
+                paginator.on('lastpage')._(elements._next).addClass('disabled');
+                if (page == 1) elements._previous.addClass('disabled');
+                if (page == paginator.getPages()) elements._next.addClass('disabled');
+            }
             
             elements._container.addClass(paginator.getDirection());
             return elements._container;
+        },
+        
+        /**
+         * <p>Creates and returns an element to use as a numbered page link.</p>
+         * @param {Number} page
+         * @returns {DomCollection}
+         */
+        _makeLink: function(page) {
+            var link = Ojay( Ojay.HTML.span(String(page)) );
+            link.on('mouseover').addClass('hovered');
+            link.on('mouseout').removeClass('hovered');
+            return link;
+        },
+        
+        /**
+         * <p>Responds to the <tt>pagecreate</tt> event on the associated <tt>Paginator</tt>
+         * instance by adding a new page link to the list.</p>
+         */
+        _addPage: function() {
+            var link = this._makeLink(this._paginator.getPages());
+            this._elements._pages.push(link);
+            this._elements._pageLinks.insert(link, 'bottom');
+            this._elements._next.removeClass('disabled');
+        },
+        
+        /**
+         * <p>Responds to the <tt>pagedestroy</tt> event on the associated <tt>Paginator</tt>
+         * instance removing the final page link from the list.</p>
+         */
+        _removePage: function() {
+            this._elements._pages.pop().remove();
+            var pager = this._paginator;
+            if (pager.isLooped()) return;
+            if (pager.getCurrentPage() == pager.getPages())
+                this._elements._next.addClass('disabled');
         },
         
         /**

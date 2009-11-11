@@ -1,9 +1,16 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
+
 /**
- * Copyright (c) 2007-2008 James Coglan
+ * JS.Class: Ruby-style JavaScript
+ * Copyright (c) 2007-2009 James Coglan
+ * 
+ * http://jsclass.jcoglan.com
+ * http://github.com/jcoglan/js.class
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,238 +29,1038 @@ Licensed under the BSD license, http://ojay.othermedia.org/license.html
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
+ * 
  * Parts of this software are derived from the following open-source projects:
- *
- * - The Prototype framework, (c) 2005-2007 Sam Stephenson
- * - Alex Arnell's Inheritance library, (c) 2006, Alex Arnell
- * - Base, (c) 2006-7, Dean Edwards
+ * 
+ *     - The Prototype framework, (c) 2005-2009 Sam Stephenson
+ *     - Alex Arnell's Inheritance library, (c) 2006, Alex Arnell
+ *     - Base, (c) 2006-9, Dean Edwards
  */
 
+/**
+ * == core ==
+ **/
+
+/** section: core
+ * JS
+ * 
+ * The `JS` object is used as a namespace by the rest of the JS.Class framework, and hosts
+ * various utility methods used throughout. None of these methods should be taken as being
+ * public API, they are all 'plumbing' and may be removed or changed at any time.
+ **/
 JS = {
-  extend: function(object, methods) {
-    for (var prop in methods) object[prop] = methods[prop];
+  /**
+   * JS.extend(target, extensions) -> Object
+   * - target (Object): object to be extended
+   * - extensions (Object): object containing key/value pairs to add to target
+   *
+   * Adds the properties of the second argument to the first, and returns the first. Will not
+   * needlessly overwrite fields with identical values; if an object has inherited a property
+   * we should not add the property to the object itself.
+   **/
+  extend: function(target, extensions) {
+    extensions = extensions || {};
+    for (var prop in extensions) {
+      if (target[prop] === extensions[prop]) continue;
+      target[prop] = extensions[prop];
+    }
+    return target;
   },
   
-  method: function(name) {
-    var self = this, cache = self._methods = self._methods || {};
-    if ((cache[name] || {}).fn == self[name]) return cache[name].bd;
-    return (cache[name] = {fn: self[name], bd: self[name].bind(self)}).bd;
-  },
-  
-  util: {}
-};
-
-Array.from = function(iterable) {
-  if (!iterable) return [];
-  if (iterable.toArray) return iterable.toArray();
-  var length = iterable.length, results = [];
-  while (length--) results[length] = iterable[length];
-  return results;
-};
-
-JS.extend(Function.prototype, {
-  bind: function() {
-    var __method = this, args = Array.from(arguments), object = args.shift() || null;
+  /**
+   * JS.makeFunction() -> Function
+   *
+   * Returns a function for use as a constructor. These functions are used as the basis for
+   * classes. The constructor calls the object's `initialize()` method if it exists.
+   **/
+  makeFunction: function() {
     return function() {
-      return __method.apply(object, args.concat(Array.from(arguments)));
+      return this.initialize
+          ? (this.initialize.apply(this, arguments) || this)
+          : this;
     };
   },
-  callsSuper: function() {
-    return /\bcallSuper\b/.test(this.toString());
+  
+  /**
+   * JS.makeBridge(klass) -> Object
+   * - klass (JS.Class): class from which you want to inherit
+   *
+   * Takes a class and returns an instance of it, without calling the class's constructor.
+   * Used for forging prototype links between objects using JavaScript's inheritance model.
+   **/
+  makeBridge: function(klass) {
+    var bridge = function() {};
+    bridge.prototype = klass.prototype;
+    return new bridge;
   },
-  is: function(object) {
-    return typeof object == 'function';
+  
+  /**
+   * JS.bind(object, func) -> Function
+   * - object (Object): object to bind the function to
+   * - func (Function): function that the bound function should call
+   *
+   * Takes a function and an object, and returns a new function that calls the original
+   * function with `this` set to refer to the `object`. Used to implement `JS.Kernel#method`,
+   * amongst other things.
+   **/
+  bind: function() {
+    var args   = JS.array(arguments),
+        method = args.shift(),
+        object = args.shift() || null;
+    
+    return function() {
+      return method.apply(object, args.concat(JS.array(arguments)));
+    };
+  },
+  
+  /**
+   * JS.callsSuper(func) -> Boolean
+   * - func (Function): function to test for super() calls
+   *
+   * Takes a function and returns `true` iff the function makes a call to `callSuper()`.
+   * Result is cached on the function itself since functions are immutable and decompiling
+   * them is expensive. We use this to determine whether to wrap the function when it's
+   * added to a class; wrapping impedes performance and should be avoided where possible.
+   **/
+  callsSuper: function(func) {
+    return func.SUPER === undefined
+        ? func.SUPER = /\bcallSuper\b/.test(func.toString())
+        : func.SUPER;
+  },
+  
+  /**
+   * JS.mask(func) -> Function
+   * - func (Function): function to obfuscate
+   *
+   * Disguises a function so that we cannot tell if it uses `callSuper()`. Sometimes we don't
+   * want such functions to be wrapped by the inheritance system. Modifies the function's
+   * `toString()` method and returns the function.
+   **/
+  mask: function(func) {
+    var string = func.toString().replace(/callSuper/g, 'super');
+    func.toString = function() { return string };
+    return func;
+  },
+  
+  /**
+   * JS.array(iterable) -> Array
+   * - iterable (Object): object you want to cast to an array
+   *
+   * Takes any iterable object (something with a `length` property) and returns a native
+   * JavaScript `Array` containing the same elements.
+   **/
+  array: function(iterable) {
+    if (!iterable) return [];
+    if (iterable.toArray) return iterable.toArray();
+    
+    var length  = iterable.length,
+        results = [];
+    
+    while (length--) results[length] = iterable[length];
+    return results;
+  },
+  
+  /**
+   * JS.indexOf(haystack, needle) -> Number
+   * - haystack (Array): array to search
+   * - needle (Object): object to search for
+   *
+   * Returns the index of the `needle` in the `haystack`, which is typically an `Array` or an
+   * array-like object. Returns -1 if no matching element is found. We need this as older
+   * IE versions don't implement `Array#indexOf`.
+   **/
+  indexOf: function(haystack, needle) {
+    for (var i = 0, n = haystack.length; i < n; i++) {
+      if (haystack[i] === needle) return i;
+    }
+    return -1;
+  },
+  
+  /**
+   * JS.isFn(object) -> Boolean
+   * - object (Object): object to test
+   *
+   * Returns `true` iff the argument is a `Function`.
+   **/
+  isFn: function(object) {
+    return object instanceof Function;
+  },
+  
+  /**
+   * JS.isType(object, type) -> Boolean
+   * - object (Object): object whose type we wish to check
+   * - type (JS.Module): type to match against
+   * 
+   * Returns `true` iff `object is of the given `type`.
+   **/
+  isType: function(object, type) {
+    if (!object || !type) return false;
+    return (type instanceof Function && object instanceof type) ||
+           (typeof type === 'string' && typeof object === type) ||
+           (object.isA && object.isA(type));
+  },
+  
+  /**
+   * JS.ignore(key, object) -> Boolean
+   * - key (String): name of field being added to an object
+   * - object (Object): value of the given field
+   *
+   * Used to determine whether a key-value pair should be added to a class or module. Pairs
+   * may be ignored if they have some special function, like `include` or `extend`.
+   **/
+  ignore: function(key, object) {
+    return /^(include|extend)$/.test(key) && typeof object === 'object';
   }
-});
-
-JS.Class = function() {
-  var args = Array.from(arguments), arg,
-      parent = Function.is(args[0]) ? args.shift() : null,
-      klass = JS.Class.create(parent);
-  
-  while (arg = args.shift())
-    klass.include(arg);
-  
-  parent && Function.is(parent.inherited) &&
-    parent.inherited(klass);
-  
-  return klass;
 };
 
-JS.extend(JS.Class, {
-  create: function(parent) {
-    var klass = function() {
-      this.initialize.apply(this, arguments);
-    };
-    this.ify(klass);
-    parent && this.subclass(parent, klass);
-    var p = klass.prototype;
-    p.klass = p.constructor = klass;
-    klass.include(this.INSTANCE_METHODS, false);
-    klass.instanceMethod('extend', this.INSTANCE_METHODS.extend, false);
-    return klass;
-  },
+
+/** section: core
+ * class JS.Module
+ * includes JS.Kernel
+ * 
+ * `Module` is the core class in JS.Class. A module is simply an object that stores methods,
+ * and is responsible for handling method lookups, inheritance relationships and the like.
+ * All of Ruby's inheritance semantics are handled using modules in JS.Class.
+ * 
+ * The basic object/module/class model in Ruby is expressed in the diagram at
+ * http://ruby-doc.org/core/classes/Class.html -- `Class` inherits from `Module`, which
+ * inherits from `Object` (as do all custom classes). `Kernel` is a `Module` which is mixed
+ * into `Object` to provide methods common to all objects.
+ * 
+ * In JS.Class, there is no `Object` class, but we do have `Module`, `Class` and `Kernel`.
+ * All top-level (parentless) classes include the `JS.Kernel` module, so all classes in effect
+ * inherit from `Kernel`. All classes are instances of `JS.Class`, and all modules instances
+ * of `JS.Module`. `Module` is a top-level class, from which `Class` inherits.
+ * 
+ * The following diagram shows this relationship; vertical lines indicate parent/child
+ * class relationships, horizontal lines indicate module inclusions. (`C`) means a class,
+ * (`M`) a module.
+ * 
+ * 
+ *      ==============      ==============      ===================      ==============
+ *      | M | Kernel |----->| C | Module |      | C | ParentClass |<-----| M | Kernel |
+ *      ==============      ==============      ===================      ==============
+ *                                ^                     ^
+ *                                |                     |
+ *                                |                     |
+ *                          =============       ==================
+ *                          | C | Class |       | C | ChildClass |
+ *                          =============       ==================
+ * 
+ * 
+ * All objects have a metamodule attached to them; this handles storage of singleton
+ * methods as metaclasses do in Ruby. This is handled by mixing the object's class into
+ * the object's metamodule.
+ * 
+ * 
+ *                class
+ *          =================
+ *          | C | SomeClass |------------------------------------------------
+ *          =================                                               |
+ *                  |                                                       |
+ *                  V                                                       |
+ *          ====================      =================================     |
+ *          | <SomeClass:0xb7> |<>----| M | <Module:<SomeClass:0xb7>> |<-----
+ *          ====================      =================================
+ *                instance                       metamodule
+ * 
+ * 
+ * Similarly, inheritance of class methods is handled by mixing the parent class's
+ * metamodule into the child class's metamodule, like so:
+ * 
+ * 
+ *            ===================      ============================
+ *            | C | ParentClass |<>----| M | <Module:ParentClass> |------
+ *            ===================      ============================     |
+ *                    ^                                                 |
+ *                    |                                                 |
+ *                    |                                                 |
+ *            ===================      ===========================      |
+ *            | C | ChildClass  |<>----| M | <Module:ChildClass> |<------
+ *            ===================      ===========================
+ * 
+ * 
+ * The parent-child relationships are also implemented using module inclusion, with some
+ * extra checks and optimisations. Also, bear in mind that although `Class` appears to be a
+ * subclass of `Module`, this particular parent-child relationship is faked using manual
+ * delegation; every class has a hidden module attached to it that handles all the method
+ * storage and lookup responsibilities.
+ **/
+JS.Module = JS.makeFunction();
+JS.extend(JS.Module.prototype, {
+  END_WITHOUT_DOT: /([^\.])$/,
   
-  ify: function(klass, noExtend) {
-    klass.superclass = klass.superclass || Object;
-    klass.subclasses = klass.subclasses || [];
-    if (noExtend === false) return klass;
-    for (var method in this.CLASS_METHODS)
-      this.CLASS_METHODS.hasOwnProperty(method) &&
-        (klass[method] = this.CLASS_METHODS[method]);
-    return klass;
-  },
-  
-  subclass: function(superklass, klass) {
-    this.ify(superklass, false);
-    klass.superclass = superklass;
-    superklass.subclasses.push(klass);
-    var bridge = function() {};
-    bridge.prototype = superklass.prototype;
-    klass.prototype = new bridge();
-    klass.extend(superklass);
-    return klass;
-  },
-  
-  properties: function(klass) {
-    var properties = {}, prop, K = this.ify(function(){});
-    loop: for (var method in klass) {
-      for (prop in K) { if (method == prop) continue loop; }
-      properties[method] = klass[method];
+  /**
+   * new JS.Module(name, methods, options)
+   * - name (String): the name of the module, used for debugging
+   * - methods (Object): list of methods for the class
+   * - options (Object): configuration options
+   * 
+   * The `name` argument is optional and may be omitted; `name` is not used to assign
+   * the class to a variable, it is only uses as metadata. The `options` object is used
+   * to specify the target object that the module is storing methods for.
+   * 
+   *     var Runnable = new JS.Module('Runnable', {
+   *         run: function(args) {
+   *             // ...
+   *         }
+   *     });
+   **/
+  initialize: function(name, methods, options) {
+    this.__mod__ = this;      // Mirror property found in Class. Think of this as toModule()
+    this.__inc__ = [];        // List of modules included in this module
+    this.__fns__ = {};        // Object storing methods belonging to this module
+    this.__dep__ = [];        // List modules and classes that depend on this module
+    this.__mct__ = {};        // Cache table for method call lookups
+    
+    if (typeof name === 'string') {
+      this.__nom__ = this.displayName = name;
+    } else {
+      this.__nom__ = this.displayName = '';
+      options = methods;
+      methods = name;
     }
-    return properties;
+    
+    options = options || {};
+    
+    // Object to resolve methods onto
+    this.__res__ = options._resolve || null;
+    
+    if (methods) this.include(methods, false);
   },
   
-  addMethod: function(object, superObject, name, func) {
-    if (!Function.is(func)) return (object[name] = func);
-    if (!func.callsSuper()) return (object[name] = func);
-    
-    var method = function() {
-      var _super = superObject[name], args = Array.from(arguments), currentSuper = this.callSuper, result;
-      Function.is(_super) && (this.callSuper = function() {
-        var i = arguments.length;
-        while (i--) args[i] = arguments[i];
-        return _super.apply(this, args);
-      });
-      result = func.apply(this, arguments);
-      currentSuper ? this.callSuper = currentSuper : delete this.callSuper;
-      return result;
-    };
-    method.valueOf = function() { return func; };
-    method.toString = function() { return func.toString(); };
-    object[name] = method;
+  /**
+   * JS.Module#setName(name) -> undefined
+   * - name (String): the name for the module
+   * 
+   * Sets the `displayName` of the module to the given value. Should be the fully-qualified
+   * name, including names of the containing modules.
+   **/
+  setName: function(name) {
+    this.__nom__ = this.displayName = name || '';
+    for (var key in this.__mod__.__fns__)
+      this.__name__(key);
+    if (name && this.__meta__) this.__meta__.setName(name + '.');
   },
   
-  INSTANCE_METHODS: {
-    initialize: function() {},
+  /**
+   * JS.Module#__name__(name) -> undefined
+   * - name (String): the name of the method to assign a `displayName` to
+   * 
+   * Assigns the `displayName` property to the named method using Ruby conventions for naming
+   * instance and singleton methods. If the named field points to another `Module`, the name
+   * change is applied recursively.
+   **/
+  __name__: function(name) {
+    if (!this.__nom__) return;
+    var object = this.__mod__.__fns__[name] || {};
+    name = this.__nom__.replace(this.END_WITHOUT_DOT, '$1#') + name;
+    if (JS.isFn(object.setName)) return object.setName(name);
+    if (JS.isFn(object)) object.displayName = name;
+  },
+  
+  /**
+   * JS.Module#define(name, func[, resolve = true[, options = {}]]) -> undefined
+   * - name (String): the name of the method
+   * - func (Function): a function implementing the method
+   * - resolve (Boolean): sets whether to refresh method tables afterward
+   * - options (Object): execution options
+   * 
+   * Adds an instance method to the module with the given `name`. The `options` parameter is
+   * for internal use to make sure callbacks fire on the correct objects, e.g. a class
+   * uses a hidden module to store its methods, but callbacks should fire on the class,
+   * not the module.
+   **/
+  define: function(name, func, resolve, options) {
+    var notify = (options || {})._notify || this;
+    this.__fns__[name] = func;
+    this.__name__(name);
+    if (JS.Module._notify && notify && JS.isFn(func))
+        JS.Module._notify(name, notify);
+    if (resolve !== false) this.resolve();
+  },
+  
+  /**
+   * JS.Module#instanceMethod(name) -> Function
+   * - name (String): the name of the method
+   * 
+   * Returns the named instance method from the module as an unbound function.
+   **/
+  instanceMethod: function(name) {
+    var method = this.lookup(name).pop();
+    return JS.isFn(method) ? method : null;
+  },
+  
+  /**
+   * JS.Module#instanceMethods([includeSuper = true[, results]]) -> Array
+   * - includeSuper (Boolean): whether to include ancestor methods
+   * - results (Array): list of found method names (internal use)
+   * 
+   * Returns an array of all the method names from the module. Pass `false` to ignore methods
+   * inherited from ancestors.
+   **/
+  instanceMethods: function(includeSuper, results) {
+    var self      = this.__mod__,
+        results   = results || [],
+        ancestors = self.ancestors(),
+        n         = ancestors.length,
+        name;
     
-    method: JS.method,
+    for (name in self.__fns__) {
+      if (self.__fns__.hasOwnProperty(name) &&
+          JS.isFn(self.__fns__[name]) &&
+          JS.indexOf(results, name) === -1)
+        results.push(name);
+    }
+    if (includeSuper === false) return results;
     
-    extend: function(source) {
-      for (var method in source)
-        source.hasOwnProperty(method) &&
-          JS.Class.addMethod(this, this.klass.prototype, method, source[method]);
-      return this;
-    },
+    while (n--) ancestors[n].instanceMethods(false, results);
+    return results;
+  },
+  
+  /**
+   * JS.Module#include(module[, resolve = true[, options = {}]]) -> undefined
+   * - module (JS.Module): the module to mix in
+   * - resolve (Boolean): sets whether to refresh method tables afterward
+   * - options (Object): flags to control execution
+   * 
+   * Mixes `module` into the receiver or, if `module` is plain old object (rather than a
+   * `JS.Module`) adds methods directly into the receiver. The `options` and `resolve` arguments
+   * are mostly for internal use; `options` specifies objects that callbacks should fire on,
+   * and `resolve` tells the module whether to resolve methods onto its target after adding
+   * the methods.
+   **/
+  include: function(module, resolve, options) {
+    resolve = (resolve !== false);
+    if (!module) return resolve ? this.resolve() : this.uncache();
+    options = options || {};
     
-    isA: function(klass) {
-      var _class = this.klass;
-      while (_class) {
-        if (_class === klass) return true;
-        _class = _class.superclass;
+    if (module.__mod__) module = module.__mod__;
+    
+    var inc      = module.include,
+        ext      = module.extend,
+        includer = options._included || this,
+        modules, method, i, n;
+    
+    if (module.__inc__ && module.__fns__) {
+      // module is a Module instance: make links and fire callbacks
+      
+      this.__inc__.push(module);
+      module.__dep__.push(this);
+      if (options._extended) module.extended && module.extended(options._extended);
+      else module.included && module.included(includer);
+      
+    } else {
+      // module is a normal object: add methods directly to this module
+      
+      if (options._recall) {
+        // Second call: add all the methods
+        for (method in module) {
+          if (JS.ignore(method, module[method])) continue;
+          this.define(method, module[method], false, {_notify: includer || options._extended || this});
+        }
+      } else {
+        // First call: handle include and extend blocks
+        
+        // Handle inclusions
+        if (typeof inc === 'object' || JS.isType(inc, JS.Module)) {
+          modules = [].concat(inc);
+          for (i = 0, n = modules.length; i < n; i++)
+            includer.include(modules[i], resolve, options);
+        }
+        
+        // Handle extensions
+        if (typeof ext === 'object' || JS.isType(ext, JS.Module)) {
+          modules = [].concat(ext);
+          for (i = 0, n = modules.length; i < n; i++)
+            includer.extend(modules[i], false);
+          includer.extend();
+        }
+        
+        // Make a second call to include(). This allows mixins to modify the
+        // include() method and affect the addition of methods to this module
+        options._recall = true;
+        return includer.include(module, resolve, options);
       }
-      return false;
+    }
+    resolve ? this.resolve() : this.uncache();
+  },
+  
+  /**
+   * JS.Module#includes(module) -> Boolean
+   * - module (JS.Module): a module to check for inclusion
+   * 
+   * Returns `true` iff the receiver includes (i.e. inherits from) the given `module`, or
+   * if the receiver and given `module` are the same object. Recurses over the receiver's
+   * inheritance tree, could get expensive.
+   **/
+  includes: function(module) {
+    var self = this.__mod__,
+        i    = self.__inc__.length;
+    
+    if (Object === module || self === module || self.__res__ === module.prototype)
+      return true;
+    
+    while (i--) {
+      if (self.__inc__[i].includes(module))
+        return true;
+    }
+    return false;
+  },
+  
+  /**
+   * JS.Module#match(object) -> Boolean
+   * - object (Object): object to type-check
+   * 
+   * Returns `true` if the receiver is in the inheritance chain of `object`.
+   **/
+  match: function(object) {
+    return object.isA && object.isA(this);
+  },
+  
+  /**
+   * JS.Module#ancestors([results]) -> Array
+   * - results (Array): list of found ancestors (internal use)
+   * 
+   * Returns an array of the module's ancestor modules/classes, with the most distant
+   * first and the receiver last. This is the opposite order to that given by Ruby, but
+   * this order makes it easier to eliminate duplicates and preserve Ruby's inheritance
+   * semantics with respect to the diamond problem. The `results` parameter is for internal
+   * use; we recurse over the tree passing the same array around rather than generating
+   * lots of arrays and concatenating.
+   **/
+  ancestors: function(results) {
+    var self     = this.__mod__,
+        cachable = (results === undefined),
+        klass    = (self.__res__||{}).klass,
+        result   = (klass && self.__res__ === klass.prototype) ? klass : self,
+        i, n;
+    
+    if (cachable && self.__anc__) return self.__anc__.slice();
+    results = results || [];
+    
+    // Recurse over inclusions first
+    for (i = 0, n = self.__inc__.length; i < n; i++)
+      self.__inc__[i].ancestors(results);
+    
+    // If this module is not already in the list, add it
+    if (JS.indexOf(results, result) === -1) results.push(result);
+    
+    if (cachable) self.__anc__ = results.slice();
+    return results;
+  },
+  
+  /**
+   * JS.Module#lookup(name) -> Array
+   * - name (String): the name of the method to search for
+   * 
+   * Returns an array of all the methods in the module's inheritance tree with the given
+   * `name`. Methods are returned in the same order as the modules in `JS.Module#ancestors`,
+   * so the last method in the list will be called first, the penultimate on the first
+   * `callSuper()`, and so on back through the list.
+   **/
+  lookup: function(name) {
+    var self  = this.__mod__,
+        cache = self.__mct__;
+    
+    if (cache[name]) return cache[name].slice();
+    
+    var ancestors = self.ancestors(),
+        results   = [],
+        i, n, method;
+    
+    for (i = 0, n = ancestors.length; i < n; i++) {
+      method = ancestors[i].__mod__.__fns__[name];
+      if (method) results.push(method);
+    }
+    cache[name] = results.slice();
+    return results;
+  },
+  
+  /**
+   * JS.Module#make(name, func) -> Function
+   * - name (String): the name of the method being produced
+   * - func (Function): a function implementing the method
+   * 
+   * Returns a version of the function ready to be added to a prototype object. Functions
+   * that use `callSuper()` must be wrapped to support that behaviour, other functions can
+   * be used raw.
+   **/
+  make: function(name, func) {
+    if (!JS.isFn(func) || !JS.callsSuper(func)) return func;
+    var module = this;
+    return function() {
+      return module.chain(this, name, arguments);
+    };
+  },
+  
+  /**
+   * JS.Module#chain(self, name, args) -> Object
+   * - self (Object): the receiver of the call
+   * - name (String): the name of the method being called
+   * - args (Array): list of arguments to begin the call
+   * 
+   * Performs calls to functions that use `callSuper()`. Ancestor methods are looked up
+   * dynamically at call-time; this allows `callSuper()` to be late-bound as in Ruby at the
+   * cost of a little performance. Arguments to the call are stored so they can be passed
+   * up the call stack automatically without the developer needing to pass them by hand.
+   **/
+  chain: JS.mask( function(self, name, args) {
+    var callees      = this.lookup(name),     // List of method implementations
+        stackIndex   = callees.length - 1,    // Current position in the call stack
+        currentSuper = self.callSuper,        // Current super method attached to the receiver
+        params       = JS.array(args),        // Copy of argument list
+        result;
+    
+    // Set up the callSuper() method
+    self.callSuper = function() {
+    
+      // Overwrite arguments specified explicitly
+      var i = arguments.length;
+      while (i--) params[i] = arguments[i];
+      
+      // Step up the stack, call and step back down
+      stackIndex -= 1;
+      var returnValue = callees[stackIndex].apply(self, params);
+      stackIndex += 1;
+      
+      return returnValue;
+    };
+    
+    // Call the last method in the stack
+    result = callees.pop().apply(self, params);
+    
+    // Remove or reassign callSuper() method
+    currentSuper ? self.callSuper = currentSuper : delete self.callSuper;
+    
+    return result;
+  } ),
+  
+  /**
+   * JS.Module#resolve([target = this]) -> undefined
+   * - target (Object): the object to reflect methods onto
+   * 
+   * Copies methods from the module onto the `target` object, wrapping methods where
+   * necessary. The target will typically be a native JavaScript prototype object used
+   * to represent a class. Recurses over this module's ancestors to make sure all applicable
+   * methods exist.
+   **/
+  resolve: function(target) {
+    var self     = this.__mod__,
+        target   = target || self,
+        resolved = target.__res__, i, n, key, made;
+    
+    // Resolve all dependent modules if the target is this module
+    if (target === self) {
+      self.uncache(false);
+      i = self.__dep__.length;
+      while (i--) self.__dep__[i].resolve();
+    }
+    
+    if (!resolved) return;
+    
+    // Recurse over this module's ancestors
+    for (i = 0, n = self.__inc__.length; i < n; i++)
+      self.__inc__[i].resolve(target);
+    
+    // Wrap and copy methods to the target
+    for (key in self.__fns__) {
+      made = target.make(key, self.__fns__[key]);
+      if (resolved[key] !== made) resolved[key] = made;
     }
   },
   
-  CLASS_METHODS: {
-    include: function(source, overwrite) {
-      var modules, i, n, inc = source.include, ext = source.extend;
-      if (inc) {
-        modules = [].concat(inc);
-        for (i = 0, n = modules.length; i < n; i++)
-          this.include(modules[i], overwrite);
-      }
-      if (ext) {
-        modules = [].concat(ext);
-        for (i = 0, n = modules.length; i < n; i++)
-          this.extend(modules[i], overwrite);
-      }
-      for (var method in source) {
-        !/^(included?|extend(ed)?)$/.test(method) &&
-          this.instanceMethod(method, source[method], overwrite);
-      }
-      Function.is(source.included) && source.included(this);
-      return this;
-    },
+  /**
+   * JS.Module#uncache([recursive = true]) -> undefined
+   * - recursive (Boolean): whether to clear the cache of all dependent modules
+   * 
+   * Clears the ancestor and method table cahces for the module. This is used to invalidate
+   * caches when modules are modified, to avoid some of the bugs that exist in Ruby.
+   **/
+  uncache: function(recursive) {
+    var self = this.__mod__,
+        i    = self.__dep__.length;
     
-    instanceMethod: function(name, func, overwrite) {
-      if (!this.prototype[name] || overwrite !== false)
-        JS.Class.addMethod(this.prototype, this.superclass.prototype, name, func);
-      return this;
-    },
-    
-    extend: function(source, overwrite) {
-      Function.is(source) && (source = JS.Class.properties(source));
-      for (var method in source) {
-        source.hasOwnProperty(method) && !/^(included?|extend(ed)?)$/.test(method) &&
-          this.classMethod(method, source[method], overwrite);
-      }
-      Function.is(source.extended) && source.extended(this);
-      return this;
-    },
-    
-    classMethod: function(name, func, overwrite) {
-      for (var i = 0, n = this.subclasses.length; i < n; i++)
-        this.subclasses[i].classMethod(name, func, false);
-      (!this[name] || overwrite !== false) &&
-        JS.Class.addMethod(this, this.superclass, name, func);
-      return this;
-    },
-    
-    method: JS.method
+    self.__anc__ = null;
+    self.__mct__ = {};
+    if (recursive === false) return;
+    while (i--) self.__dep__[i].uncache();
   }
 });
 
-JS.extend(JS, {
-  Interface: JS.Class({
-    initialize: function(methods) {
-      this.test = function(object, returnName) {
-        var n = methods.length;
-        while (n--) {
-          if (!Function.is(object[methods[n]]))
-            return returnName ? methods[n] : false;
-        }
-        return true;
-      };
-    },
-    
-    extend: {
-      ensure: function() {
-        var args = Array.from(arguments), object = args.shift(), face, result;
-        while (face = args.shift()) {
-          result = face.test(object, true);
-          if (result !== true) throw new Error('object does not implement ' + result + '()');
-        }
-      }
-    }
-  }),
+
+/** section: core
+ * class JS.Class < JS.Module
+ * 
+ * `Class` is a subclass of `JS.Module`; classes not only store methods but also spawn
+ * new objects. In addition, classes have an extra type of inheritance on top of mixins,
+ * in that each class can have a single parent class from which it will inherit both
+ * instance and singleton methods.
+ * 
+ * Refer to `JS.Module` for details of how inheritance is implemented in JS.Class. Though
+ * `Class` is supposed to appear to be a subclass of `Module`, this relationship is
+ * implemented by letting each `Class` hold a reference to an anonymous `Module` and
+ * using manual delegation where necessary.
+ **/
+JS.Class = JS.makeFunction();
+JS.extend(JS.Class.prototype = JS.makeBridge(JS.Module), {
   
-  Singleton: function() {
-    return new (JS.Class.apply(JS, arguments));
+  /**
+   * new JS.Class(name, parent, methods)
+   * - name (String): the name of the class, used for debugging
+   * - parent (JS.Class): the parent class to inherit from
+   * - methods (Object): list of methods for the class
+   * 
+   * The `name` and `parent` arguments are both optional and may be omitted. `name`
+   * is not used to assign the class to a variable, it is only uses as metadata.
+   * The default parent class is `Object`, and all classes include the JS.Kernel
+   * module.
+   **/
+  initialize: function(name, parent, methods) {
+    if (typeof name === 'string') {
+      this.__nom__ = this.displayName = name;
+    } else {
+      this.__nom__ = this.displayName = '';
+      methods = parent;
+      parent = name;
+    }
+    var klass = JS.extend(JS.makeFunction(), this);
+    klass.klass = klass.constructor = this.klass;
+    
+    if (!JS.isFn(parent)) {
+      methods = parent;
+      parent = Object;
+    }
+    
+    // Set up parent-child relationship, then add methods. Setting up a parent
+    // class in JavaScript wipes the existing prototype object.
+    klass.inherit(parent);
+    klass.include(methods, false);
+    klass.resolve();
+    
+    // Fire inherited() callback on ancestors
+    do {
+      parent.inherited && parent.inherited(klass);
+    } while (parent = parent.superclass);
+    
+    return klass;
   },
   
-  Module: function(source) {
-    return {
-      included: function(klass) { klass.include(source); },
-      extended: function(klass) { klass.extend(source); }
-    };
+  /**
+   * JS.Class#inherit(klass) -> undefined
+   * - klass (JS.Class): the class to inherit from
+   * 
+   * Sets up the parent-child relationship to the parent class. This is a destructive action
+   * in that the existing prototype will be discarded; always call this before adding any
+   * methods to the class.
+   **/
+  inherit: function(klass) {
+    this.superclass = klass;
+    
+    // Mix the parent's metamodule into this class's metamodule
+    if (this.__eigen__ && klass.__eigen__) this.extend(klass.__eigen__(), true);
+    
+    this.subclasses = [];
+    (klass.subclasses || []).push(this);
+    
+    // Bootstrap JavaScript's prototypal inheritance model
+    var p = this.prototype = JS.makeBridge(klass);
+    p.klass = p.constructor = this;
+    
+    // Set up a module to store methods and delegate calls to
+    // -- Class does not really subclass Module, instead each
+    // Class has a Module that it delegates to
+    this.__mod__ = new JS.Module(this.__nom__, {}, {_resolve: this.prototype});
+    this.include(JS.Kernel, false);
+    
+    if (klass !== Object) this.include(klass.__mod__ || new JS.Module(klass.prototype,
+        {_resolve: klass.prototype}), false);
+  },
+  
+  /**
+   * JS.Class#include(module[, resolve = true[, options = {}]]) -> undefined
+   * - module (JS.Module): the module to mix in
+   * - resolve (Boolean): sets whether to refresh method tables afterward
+   * - options (Object): flags to control execution
+   * 
+   * Mixes a `module` into the class if it's a `JS.Module` instance, or adds instance
+   * methods to the class itself if given a plain old object. Overrides `JS.Module#include`
+   * to make sure callbacks fire on the class rather than its delegating module.
+   **/
+  include: function(module, resolve, options) {
+    if (!module) return;
+    
+    var mod     = this.__mod__,
+        options = options || {};
+    
+    options._included = this;
+    return mod.include(module, resolve, options);
+  },
+  
+  /**
+   * JS.Class#define(name, func[, resolve = true[, options = {}]]) -> undefined
+   * - name (String): the name of the method
+   * - func (Function): a function to implement the method
+   * - resolve (Boolean): sets whether to refresh method tables afterward
+   * - options (Object): options for internal use
+   * 
+   * Adds an instance method to the class with the given `name`. The `options` parameter is
+   * for internal use to make sure callbacks fire on the correct objects, e.g. a class
+   * uses a hidden module to store its methods, but callbacks should fire on the class,
+   * not the module.
+   **/
+  define: function(name, func, resolve, options) {
+    var module = this.__mod__;
+    options = options || {};
+    options._notify = this;
+    module.define(name, func, resolve, options);
   }
 });
+
+
+// This file bootstraps the framework by redefining Module and Class using their
+// own prototypes and mixing in methods from Kernel, making these classes appear
+// to be instances of themselves.
+
+JS.Module = new JS.Class('Module', JS.Module.prototype);
+JS.Class = new JS.Class('Class', JS.Module, JS.Class.prototype);
+JS.Module.klass = JS.Module.constructor =
+JS.Class.klass = JS.Class.constructor = JS.Class;
+
+JS.extend(JS.Module, {
+  _observers: [],
+  methodAdded: function(block, context) {
+    this._observers.push([block, context]);
+  },
+  _notify: function(name, object) {
+    var obs = this._observers, i = obs.length;
+    while (i--) obs[i][0].call(obs[i][1] || null, name, object);
+  }
+});
+
+
+/** section: core
+ * mixin JS.Kernel
+ * 
+ * `Kernel` is the base module; all classes include the `Kernel`, so its methods become
+ * available to all objects instantiated by JS.Class. As in Ruby, the core `Object`
+ * methods are implemented here rather than in the base `Object` class. JS.Class does
+ * not in fact have an `Object` class and does not modify the builtin JavaScript `Object`
+ * class either.
+ **/
+JS.Kernel = JS.extend(new JS.Module('Kernel', {
+  /**
+   * JS.Kernel#__eigen__() -> JS.Module
+   * 
+   * Returns the object's metamodule, analogous to calling `(class << self; self; end)`
+   * in Ruby. Ruby's metaclasses are `Class`es, not just `Module`s, but so far I've not found
+   * a compelling reason to enforce this. You cannot instantiate or subclass metaclasses
+   * in Ruby, they only really exist to store methods so a module will suffice.
+   **/
+  __eigen__: function() {
+    if (this.__meta__) return this.__meta__;
+    
+    var me     = this.__nom__,
+        klass  = this.klass.__nom__,
+        name   = me || (klass ? '#<' + klass + '>' : ''),
+        module = this.__meta__ = new JS.Module(name ? name + '.' : '', {}, {_resolve: this});
+    
+    module.include(this.klass.__mod__, false);
+    return module;
+  },
+  
+  /**
+   * JS.Kernel#equals(object) -> Boolean
+   * - object (Object): object to compare to the receiver
+   * 
+   * Returns `true` iff `object` is the same object as the receiver. Override to provide a
+   * more meaningful comparison for use in sets, hashtables etc.
+   **/
+  equals: function(object) {
+    return this === object;
+  },
+  
+  /**
+   * JS.Kernel#extend(module[, resolve = true]) -> undefined
+   * - module (JS.Module): module with which to extend the object
+   * - resolve (Boolean): whether to refresh method tables afterward
+   * 
+   * Extends the object using the methods from `module`. If `module` is an instance of
+   * `JS.Module`, it becomes part of the object's inheritance chain and any methods added
+   * directly to the object will take precedence. Pass `false` as a second argument
+   * to prevent the method resolution process from firing.
+   **/
+  extend: function(module, resolve) {
+    return this.__eigen__().include(module, resolve, {_extended: this});
+  },
+  
+  /**
+   * JS.Kernel#hash() -> String
+   * 
+   * Returns a hexadecimal hashcode for the object for use in hashtables. By default,
+   * this is a random number guaranteed to be unique to the object. If you override
+   * this method, make sure that `a.equals(b)` implies `a.hash() === b.hash()`.
+   **/
+  hash: function() {
+    return this.__hashcode__ = this.__hashcode__ || JS.Kernel.getHashCode();
+  },
+  
+  /**
+   * JS.Kernel#isA(type) -> Boolean
+   * - type (JS.Module): module or class to check the object's type against
+   * 
+   * Returns `true` iff the object is an instance of `type` or one of its
+   * subclasses, or if the object's class includes the module `type`.
+   **/
+  isA: function(moduleOrClass) {
+    return this.__eigen__().includes(moduleOrClass);
+  },
+  
+  /**
+   * JS.Kernel#method(name) -> Function
+   * - name (String): the name of the required method
+   * 
+   * Returns the named method from the object as a bound function.
+   **/
+  method: function(name) {
+    var self  = this,
+        cache = self.__mcache__ = self.__mcache__ || {};
+    
+    if ((cache[name] || {}).fn === self[name]) return cache[name].bd;
+    return (cache[name] = {fn: self[name], bd: JS.bind(self[name], self)}).bd;
+  },
+  
+  /**
+   * JS.Kernel#methods() -> Array
+   * 
+   * Returns a list of all the method names defined on the object.
+   **/
+  methods: function() {
+    return this.__eigen__().instanceMethods(true);
+  },
+  
+  /**
+   * JS.Kernel#tap(block[, context]) -> this
+   * - block (Function): block of code to execute
+   * - context (Object): sets the binding of `this` within `block`
+   * 
+   * Executes the given function passing the object as a parameter, and returns the
+   * object rather than the result of the function. Designed to 'tap into' a method
+   * chain to inspect intermediate values. From the Ruby docs:
+   * 
+   *     list                   .tap(function(x) { console.log("original: ", x) })
+   *         .toArray()         .tap(function(x) { console.log("array: ", x) })
+   *         .select(condition) .tap(function(x) { console.log("evens: ", x) })
+   *         .map(square)       .tap(function(x) { console.log("squares: ", x) })
+   **/
+  tap: function(block, context) {
+    block.call(context || null, this);
+    return this;
+  }
+}),
+
+{
+  __hashIndex__: 0,
+  
+  getHashCode: function() {
+    this.__hashIndex__ += 1;
+    return (Math.floor(new Date().getTime() / 1000) + this.__hashIndex__).toString(16);
+  }
+});
+
+JS.Module.include(JS.Kernel);
+JS.extend(JS.Module, JS.Kernel.__fns__);
+JS.Class.include(JS.Kernel);
+JS.extend(JS.Class, JS.Kernel.__fns__);
+
+
+/** section: core
+ * class JS.Interface
+ * 
+ * `Interface` is a class used to encapsulate sets of methods and check whether objects
+ * implement them. Think of interfaces as a means of duck-typing rather than as they are
+ * used in Java.
+ **/
+JS.Interface = new JS.Class({
+  /**
+   * new JS.Interface(methods)
+   * - methods (Array): a list of method names
+   * 
+   * An `Interface` is instantiated using a list of method names; these methods are the
+   * API the interface can be used to check for.
+   * 
+   *     var HistoryInterface = new JS.Interface([
+   *         'getInitialState',
+   *         'changeState'
+   *     ]);
+   **/
+  initialize: function(methods) {
+    this.test = function(object, returnName) {
+      var n = methods.length;
+      while (n--) {
+        if (!JS.isFn(object[methods[n]]))
+          return returnName ? methods[n] : false;
+      }
+      return true;
+    };
+  },
+  
+  /**
+   * JS.Interface#test(object[, returnName = false]) -> Boolean | String
+   * - object (Object): object whose API we wish to check
+   * - returnName (Boolean): if true, return the first name found to be missing
+   * 
+   * Checks whether `object` implements the interface, returning `true` or `false`. If
+   * the second argument is `true`, returns the name of the first method found to be
+   * missing from the object's API.
+   **/
+  
+  extend: {
+    /**
+     * JS.Interface.ensure(object, iface1[, iface2]) -> undefined
+     * - object (Object): object whose API we wish to check
+     * - iface (JS.Interface): interface the object should implement
+     * 
+     * Throws an `Error` unless `object` implements the required interface(s).
+     **/
+    ensure: function() {
+      var args = JS.array(arguments), object = args.shift(), face, result;
+      while (face = args.shift()) {
+        result = face.test(object, true);
+        if (result !== true) throw new Error('object does not implement ' + result + '()');
+      }
+    }
+  }
+});
+
+
+/** section: core
+ * class JS.Singleton
+ * 
+ * `Singleton` is a class used to construct custom objects with all the inheritance features
+ * of `JS.Class`, the methods from `JS.Kernel`, etc. It constructs an anonymous class from the
+ * objects you provide and returns an instance of this class.
+ **/
+JS.Singleton = new JS.Class({
+  /**
+   * new JS.Singleton(name, parent, methods)
+   * - name (String): the name of the singleton, used for debugging
+   * - parent (JS.Class): the parent class to inherit from
+   * - methods (Object): list of methods for the singleton
+   * 
+   * `Singleton`s are instantiated the same way as instances of `JS.Class`, the only difference
+   * being that `Singleton` returns an instance of the newly created class, rather than the
+   * class itself.
+   **/
+  initialize: function(name, parent, methods) {
+    return new (new JS.Class(name, parent, methods));
+  }
+});
+
 
 JS.MethodChain = function(base) {
-  var queue = [], baseObject = base || {};
+  var queue      = [],
+      baseObject = base || {};
   
   this.____ = function(method, args) {
     queue.push({func: method, args: args});
@@ -277,7 +1084,7 @@ JS.MethodChain.fire = function(queue, object) {
       case 'function':  property = method.func;               break;
       case 'object':    object = method.func; continue loop;  break;
     }
-    object = (typeof property == 'function')
+    object = (typeof property === 'function')
         ? property.apply(object, method.args)
         : property;
   }
@@ -286,7 +1093,9 @@ JS.MethodChain.fire = function(queue, object) {
 
 JS.MethodChain.prototype = {
   _: function() {
-    var base = arguments[0], args, i, n;
+    var base = arguments[0],
+        args, i, n;
+    
     switch (typeof base) {
       case 'object': case 'function':
         args = [];
@@ -310,24 +1119,28 @@ JS.MethodChain.reserved = (function() {
 
 JS.MethodChain.addMethod = function(name) {
   if (this.reserved.test(name)) return;
-  this.prototype[name] = function() {
+  var func = this.prototype[name] = function() {
     this.____(name, arguments);
     return this;
   };
+  func.displayName = 'MethodChain#' + name;
 };
 
+JS.MethodChain.displayName = 'MethodChain';
+
 JS.MethodChain.addMethods = function(object) {
-  var methods = [], property, i, n;
+  var methods = [], property, i;
   
   for (property in object)
-    Number(property) != property && methods.push(property);
+    Number(property) !== property && methods.push(property);
   
   if (object instanceof Array) {
-    for (i = 0, n = object.length; i < n; i++)
-      typeof object[i] == 'string' && methods.push(object[i]);
+    i = object.length;
+    while (i--)
+      typeof object[i] === 'string' && methods.push(object[i]);
   }
-  for (i = 0, n = methods.length; i < n; i++)
-    this.addMethod(methods[i]);
+  i = methods.length;
+  while (i--) this.addMethod(methods[i]);
   
   object.prototype &&
     this.addMethods(object.prototype);
@@ -335,24 +1148,18 @@ JS.MethodChain.addMethods = function(object) {
 
 it = its = function() { return new JS.MethodChain; };
 
-JS.Class.addMethod = (function(wrapped) {
-  return function() {
-    JS.MethodChain.addMethods([arguments[2]]);
-    return wrapped.apply(JS.Class, arguments);
-  };
-})(JS.Class.addMethod);
+JS.Module.methodAdded(function(name) {
+  JS.MethodChain.addMethod(name);
+});
 
-(function(methods) {
-  JS.extend(JS.Class.INSTANCE_METHODS, methods);
-  JS.extend(JS.Class.CLASS_METHODS, methods);
-})({
+JS.Kernel.include({
   wait: function(time) {
     var chain = new JS.MethodChain;
     
-    typeof time == 'number' &&
+    typeof time === 'number' &&
       setTimeout(chain.fire.bind(chain, this), time * 1000);
     
-    this.forEach && typeof time == 'function' &&
+    this.forEach && typeof time === 'function' &&
       this.forEach(function() {
         setTimeout(chain.fire.bind(chain, arguments[0]), time.apply(this, arguments) * 1000);
       });
@@ -361,123 +1168,156 @@ JS.Class.addMethod = (function(wrapped) {
   },
   
   _: function() {
-    var base = arguments[0], args = [], i, n;
+    var base = arguments[0],
+        args = [],
+        i, n;
+    
     for (i = 1, n = arguments.length; i < n; i++) args.push(arguments[i]);
-    return  (typeof base == 'object' && base) ||
-            (typeof base == 'function' && base.apply(this, args)) ||
+    return  (typeof base === 'object' && base) ||
+            (typeof base === 'function' && base.apply(this, args)) ||
             this;
   }
-});
+}, true);
 
-JS.Observable = {
+
+JS.Observable = new JS.Module('Observable', {
+  extend: {
+    DEFAULT_METHOD: 'update'
+  },
+  
   addObserver: function(observer, context) {
-    (this._observers = this._observers || []).push({bk: observer, cx: context || null});
+    (this.__observers__ = this.__observers__ || []).push({_block: observer, _context: context || null});
   },
   
   removeObserver: function(observer, context) {
-    this._observers = this._observers || [];
+    this.__observers__ = this.__observers__ || [];
     context = context || null;
-    for (var i = 0, n = this.countObservers(); i < n; i++) {
-      if (this._observers[i].bk == observer && this._observers[i].cx == context) {
-        this._observers.splice(i,1);
+    var i = this.countObservers();
+    while (i--) {
+      if (this.__observers__[i]._block === observer && this.__observers__[i]._context === context) {
+        this.__observers__.splice(i,1);
         return;
       }
     }
   },
   
   removeObservers: function() {
-    this._observers = [];
+    this.__observers__ = [];
   },
   
   countObservers: function() {
-    return (this._observers = this._observers || []).length;
+    return (this.__observers__ = this.__observers__ || []).length;
   },
   
   notifyObservers: function() {
     if (!this.isChanged()) return;
-    for (var i = 0, n = this.countObservers(), observer; i < n; i++) {
-      observer = this._observers[i];
-      observer.bk.apply(observer.cx, arguments);
+    var i = this.countObservers(), observer, block, context;
+    while (i--) {
+      observer = this.__observers__[i];
+      block    = observer._block;
+      context  = observer._context;
+      if (JS.isFn(block)) block.apply(context || null, arguments);
+      else block[context || JS.Observable.DEFAULT_METHOD].apply(block, arguments);
     }
   },
   
   setChanged: function(state) {
-    this._changed = !(state === false);
+    this.__changed__ = !(state === false);
   },
   
   isChanged: function() {
-    if (this._changed === undefined) this._changed = true;
-    return !!this._changed;
+    if (this.__changed__ === undefined) this.__changed__ = true;
+    return !!this.__changed__;
   }
-};
+});
 
-JS.Observable.subscribe   = JS.Observable.addObserver;
-JS.Observable.unsubscribe = JS.Observable.removeObserver;
-JS.Observable = JS.Module(JS.Observable);
+JS.Observable.include({
+  subscribe:    JS.Observable.instanceMethod('addObserver'),
+  unsubscribe:  JS.Observable.instanceMethod('removeObserver')
+}, true);
 
-JS.State = JS.Module({
-  _getState: function(state) {
-    return  (typeof state == 'object' && state) ||
-            (typeof state == 'string' && ((this.states || {})[state] || {})) ||
+
+JS.State = new JS.Module('State', {
+  __getState__: function(state) {
+    return  (typeof state === 'object' && state) ||
+            (typeof state === 'string' && ((this.states || {})[state] || {})) ||
             {};
   },
   
   setState: function(state) {
-    this._state = this._getState(state);
-    JS.util.State.addMethods(this._state, this.klass);
+    this.__state__ = this.__getState__(state);
+    JS.State.addMethods(this.__state__, this.klass);
   },
   
   inState: function() {
-    for (var i = 0, n = arguments.length; i < n; i++) {
-      if (this._state == this._getState(arguments[i])) return true;
+    var i = arguments.length;
+    while (i--) {
+      if (this.__state__ === this.__getState__(arguments[i])) return true;
     }
     return false;
+  },
+  
+  extend: {
+    stub: function() { return this; },
+    
+    buildStubs: function(stubs, collection, states) {
+      var state, method;
+      for (state in states) {
+        collection[state] = {};
+        for (method in states[state]) stubs[method] = this.stub;
+    } },
+    
+    buildCollection: function(module, states) {
+      var stubs       = {},
+          collection  = {},
+          superstates = module.lookup('states').pop() || {},
+          state, klass, methods, name;
+      
+      this.buildStubs(stubs, collection, states);
+      this.buildStubs(stubs, collection, superstates);
+      
+      for (state in collection) {
+        klass = (superstates[state]||{}).klass;
+        klass = klass ? new JS.Class(klass, states[state]) : new JS.Class(states[state]);
+        methods = {};
+        for (name in stubs) { if (!klass.prototype[name]) methods[name] = stubs[name]; }
+        klass.include(methods, false);
+        collection[state] = new klass;
+      }
+      if (module.__res__) this.addMethods(stubs, module.__res__.klass);
+      return collection;
+    },
+    
+    addMethods: function(state, klass) {
+      if (!klass) return;
+      
+      var methods = {},
+          p       = klass.prototype,
+          method;
+      
+      for (method in state) {
+        if (p[method]) continue;
+        p[method] = klass.__mod__.__fns__[method] = this.wrapped(method);
+      }
+    },
+    
+    wrapped: function(method) {
+      return function() {
+        var func = (this.__state__ || {})[method];
+        return func ? func.apply(this, arguments): this;
+      };
+    }
   }
 });
 
-JS.util.State = {
-  stub: function() { return this; },
-  
-  buildStubs: function(stubs, collection, states) {
-    var state, method;
-    for (state in states) {
-      collection[state] = {};
-      for (method in states[state]) stubs[method] = this.stub;
-  } },
-  
-  buildCollection: function(addMethod, proto, superproto, states) {
-    var stubs = {}, collection = {}, superstates = superproto.states || {};
-    this.buildStubs(stubs, collection, states);
-    this.buildStubs(stubs, collection, superstates);
-    var state, klass;
-    for (state in collection) {
-      klass = (superstates[state]||{}).klass;
-      klass = klass ? JS.Class(klass, states[state]) : JS.Class(states[state]);
-      klass.include(stubs, false);
-      collection[state] = new klass;
-      JS.util.State.addMethods(collection[state], proto.klass);
-    }
-    return addMethod.call(JS.Class, proto, superproto, 'states', collection);
-  },
-  
-  addMethods: function(state, klass) {
-    for (var method in state) this.addMethod(klass, method);
-  },
-  
-  addMethod: function(klass, method) {
-    klass.instanceMethod(method, function() {
-      var func = (this._state || {})[method];
-      return func ? func.apply(this, arguments): this;
-    }, false);
-  }
-};
-
-JS.Class.addMethod = (function(wrapped) {
-  return function(object, superObject, name, block) {
-    if (name != 'states' || typeof block != 'object') return wrapped.apply(JS.Class, arguments);
-    return JS.util.State.buildCollection(wrapped, object, superObject, block);
+JS.Module.include({define: (function(wrapped) {
+  return function(name, block) {
+    if (name === 'states' && typeof block === 'object')
+      arguments[1] = JS.State.buildCollection(this, block);
+    return wrapped.apply(this, arguments);
   };
-})(JS.Class.addMethod);
+})(JS.Module.prototype.define)}, true);
+
 
 /**
  * <p>Returns an object that wraps a collection of DOM element references by parsing
@@ -492,7 +1332,7 @@ var Ojay = function() {
     var elements = [], arg, i, n;
     for (i = 0, n = arguments.length; i < n; i++) {
         arg = arguments[i];
-        if (typeof arg == 'string') arg = Ojay.query(arg);
+        if (typeof arg == 'string') arg = Ojay.cssEngine.query(arg);
         if (arg.toArray) arg = arg.toArray();
         if (!(arg instanceof Array)) arg = [arg];
         elements = elements.concat(arg);
@@ -500,14 +1340,17 @@ var Ojay = function() {
     return new Ojay.DomCollection(elements.unique());
 };
 
+Ojay.VERSION = '0.4.1';
+
+Array.from = JS.array;
+
+Function.prototype.bind = function() {
+    return JS.bind.apply(JS, [this].concat(JS.array(arguments)));
+};
+
+
 (function(Dom) {
     JS.extend(Ojay, /** @scope Ojay */{
-        
-        query: function(selector, node) {
-            return document.querySelectorAll
-                    ? Array.from((node || document).querySelectorAll(selector))
-                    : YAHOO.util.Selector.query(selector, node);
-        },
         
         /**
          * <p>Returns an Ojay Collection containing zero or one element that matches the ID. Used
@@ -612,6 +1455,7 @@ var Ojay = function() {
 })(YAHOO.util.Dom);
 
 Ojay.changeAlias('$');
+
 
 /**
  * <p>This object contains definitions for <tt>Array</tt> instance methods defined
@@ -974,6 +1818,7 @@ Ojay.ARRAY_METHODS = {
 
 JS.extend(Array.prototype, Ojay.ARRAY_METHODS);
 
+
 /**
  * Functional extensions: Copyright (c) 2005-2008 Sam Stephenson / the Prototype team,
  * released under an MIT-style license.
@@ -1139,6 +1984,7 @@ JS.extend(Function.prototype, /** @scope Function.prototype */{
     }
 });
 
+
 /**
  * String extensions: Copyright (c) 2005-2008 Sam Stephenson / the Prototype team,
  * released under an MIT-style license.
@@ -1201,6 +2047,7 @@ JS.extend(String.prototype, /** @scope String.prototype */{
     trim: YAHOO.lang.trim.methodize()
 });
 
+
 /**
  * @overview
  * <p>Ojay adds all the single-number functions in <tt>Math</tt> as methods to <tt>Number</tt>.
@@ -1237,6 +2084,7 @@ Number.prototype.between = function(a, b, inclusive) {
     if (this > a && this < b) return true;
     return (this == a || this == b) ? (inclusive !== false) : false;
 };
+
 
 /**
  * Copyright (c) 2007-2008 James Coglan
@@ -1315,6 +2163,126 @@ Function.fromObject = function(object) {
   });
 }, Array.prototype);
 
+
+/**
+ * @overview
+ * <p>This file contains adapter objects that allow Ojay to use a variety of CSS selector
+ * backends. Given that CSS engines are now being released as standalone libraries, it
+ * makes sense to let people choose which one they want to use.</p>
+ * 
+ * <p>Ojay includes support for <tt>YAHOO.util.Selector</tt>, <tt>Sizzle</tt> and
+ * <tt>peppy</tt> engines, but it is trivial to add support for others.</p>
+ */
+Ojay.Selectors = {
+    Native: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return Array.from((context || document).querySelectorAll(selector));
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            var results = this.query(selector, node.parentNode);
+            return results.indexOf(node) != -1;
+        }
+    },
+    
+    Yahoo: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return YAHOO.util.Selector.query(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            return YAHOO.util.Selector.test(node, selector);
+        }
+    },
+    
+    Ext: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return Ext.DomQuery.select(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            return Ext.DomQuery.is(node, selector);
+        }
+    },
+    
+    Sizzle: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return Sizzle(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            return Sizzle.filter(selector, [node]).length === 1;
+        }
+    },
+    
+    Peppy: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return peppy.query(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            var results = peppy.query(selector, node, true);
+            return results.indexOf(node) != -1;
+        }
+    }
+};
+
+// Default choice is YUI, or qSA if available
+Ojay.cssEngine = document.querySelectorAll
+               ? Ojay.Selectors.Native
+               : Ojay.Selectors.Yahoo;
+
+
 (function(Event) {
     JS.extend(Ojay, /** @scope Ojay */{
         /**
@@ -1391,6 +2359,7 @@ Function.fromObject = function(object) {
     });
 })(YAHOO.util.Event);
 
+
 /**
  * <p>The <tt>Ojay.Observable</tt> module extends the <tt>JS.Observable</tt> module with an
  * <tt>on()</tt> method that behaves similarly to <tt>DomCollection#on()</tt>, used for
@@ -1456,10 +2425,13 @@ Function.fromObject = function(object) {
  *
  * @module Observable
  */
-Ojay.Observable = new JS.Module({
+Ojay.Observable = new JS.Module('Ojay.Observable', {
     include: JS.Observable,
     
     /**
+     * <p>Registers an event listener on the object. Takes an event name and an optional
+     * callback function, and returns a <tt>MethodChain</tt> that will fire on the source
+     * object. The callback receives the source object as the first parameter.</p>
      * @param {String} eventName
      * @param {Function} callback
      * @param {Object} scope
@@ -1471,16 +2443,49 @@ Ojay.Observable = new JS.Module({
         this.addObserver(function() {
             var args = Array.from(arguments), message = args.shift();
             if (message != eventName) return;
-            var receiver = (args[0]||{}).receiver || this;
-            if (typeof callback == 'function') {
-                if (receiver !== this) args.shift();
-                callback.apply(scope || null, [receiver].concat(args));
-            }
-            chain.fire(scope || receiver);
+            if (typeof callback == 'function') callback.apply(scope || null, args);
+            chain.fire(scope || args[0]);
         }, this);
         return chain;
+    },
+    
+    /**
+     * <p>Notifies all observers of an object, sending them the supplied arguments. Use
+     * the first argument to specify the event name for handlers registered using
+     * <tt>Observable#on()</tt>.</p>
+     * @returns {Observable}
+     */
+    notifyObservers: function() {
+        var args = Array.from(arguments),
+            receiver = (args[1]||{}).receiver || this;
+        
+        if (receiver == this) args.splice(1, 0, receiver);
+        else args[1] = receiver;
+        
+        this.callSuper.apply(this, args);
+        
+        args[1] = {receiver: receiver};
+        var classes = this.klass.ancestors(), klass;
+        while (klass = classes.pop())
+            klass.notifyObservers && klass.notifyObservers.apply(klass, args);
+        
+        return this;
+    },
+    
+    extend: /** @scope Ojay.Observable */{
+        /**
+         * <p>Any module that includes <tt>Observable</tt> is also extended
+         * using <tt>Observable</tt>.</p>
+         * @param {Class|Module} base
+         */
+        included: function(base) {
+            base.extend(this);
+        }
     }
 });
+
+Ojay.Observable.extend(Ojay.Observable);
+
 
 (function(Ojay, Dom) {
     /**
@@ -1490,8 +2495,7 @@ Ojay.Observable = new JS.Module({
      * @constructor
      * @class DomCollection
      */
-    Ojay.DomCollection = new JS.Class(/** @scope Ojay.DomCollection.prototype */{
-        
+    Ojay.DomCollection = new JS.Class('Ojay.DomCollection', /** @scope Ojay.DomCollection.prototype */{
         /**
          * @param {Array} collection
          * @returns {DomCollection}
@@ -1610,7 +2614,9 @@ Ojay.Observable = new JS.Module({
         on: function(eventName, callback, scope) {
             var chain = new JS.MethodChain;
             if (callback && typeof callback != 'function') scope = callback;
-            YAHOO.util.Event.on(this, eventName, function(evnt) {
+            
+            var handler = function(evnt) {
+                if (evnt.eventName !== undefined && evnt.eventName != eventName) return;
                 var wrapper = Ojay(this);
                 evnt.stopDefault   = Ojay.stopDefault.method;
                 evnt.stopPropagate = Ojay.stopPropagate.method;
@@ -1618,8 +2624,57 @@ Ojay.Observable = new JS.Module({
                 evnt.getTarget     = Ojay._getTarget;
                 if (typeof callback == 'function') callback.call(scope || null, wrapper, evnt);
                 chain.fire(scope || wrapper);
-            });
+            };
+            
+            if (/:/.test(eventName)) {
+                for (var i = 0, n = this.length; i < n; i++) (function(element) {
+                    var wrapped = handler.bind(element);
+                    if (element.addEventListener) {
+                        element.addEventListener('dataavailable', wrapped, false);
+                    } else {
+                        element.attachEvent('ondataavailable', wrapped);
+                        element.attachEvent('onfilterchange', wrapped);
+                    }
+                })(this[i]);
+            } else {
+                YAHOO.util.Event.on(this, eventName, handler);
+            }
             return chain;
+        },
+        
+        /**
+         * <p>Fires a custom event on each element in the collection, firing any custom event
+         * handlers that have been registered on these elements. The first argument should be
+         * the name of the event to fire, and the second argument (optional) should be a boolean
+         * indicating whether the event should bubble or not (this defaults to true).</p>
+         * @param {String} eventName
+         * @param {Object} data
+         * @param {Boolean} bubble
+         * @returns {DomCollection}
+         */
+        trigger: function(eventName, data, bubble) {
+            bubble = (bubble === undefined) ? true : false;
+            
+            for (var i = 0, n = this.length; i < n; i++) (function(element) {
+                if (element == document && document.createEvent && !element.dispatchEvent)
+                    element = document.documentElement;
+                var event;
+                if (document.createEvent) {
+                    event = document.createEvent('HTMLEvents');
+                    event.initEvent('dataavailable', bubble, true);
+                } else {
+                    event = document.createEventObject();
+                    event.eventType = bubble ? 'ondataavailable' : 'onfilterchange';
+                }
+                event.eventName = eventName;
+                JS.extend(event, data || {});
+                
+                try { document.createEvent ? element.dispatchEvent(event)
+                                           : element.fireEvent(event.eventType, event);
+                } catch (e) {}
+            })(this[i]);
+            
+            return this;
         },
         
         /**
@@ -1688,6 +2743,26 @@ Ojay.Observable = new JS.Module({
         },
         
         /**
+         * @param {Object} parameters
+         * @param {Number|Function} duration
+         * @param {Object} options
+         * @returns {MethodChain}
+         */
+        scroll: function(parameters, duration, options) {
+            if (duration) {
+                var animation = new Ojay.Animation(this, {scroll: {to: parameters}}, duration, options, YAHOO.util.Scroll);
+                animation.run();
+                return animation.chain;
+            } else {
+                for (var i = 0, n = this.length; i < n; i++) {
+                    this[i].scrollLeft = parameters[0];
+                    this[i].scrollTop = parameters[1];
+                }
+                return this;
+            }
+        },
+        
+        /**
          * <p>Adds the given string as a class name to all the elements in the collection and returns
          * a reference to the collection for chaining.</p>
          * @param {String} className
@@ -1695,6 +2770,7 @@ Ojay.Observable = new JS.Module({
          */
         addClass: function(className) {
             Dom.addClass(this, className);
+            this.trigger('ojay:classadded', {className: className}, false);
             return this;
         },
         
@@ -1706,6 +2782,7 @@ Ojay.Observable = new JS.Module({
          */
         removeClass: function(className) {
             Dom.removeClass(this, className);
+            this.trigger('ojay:classremoved', {className: className}, false);
             return this;
         },
         
@@ -1718,6 +2795,8 @@ Ojay.Observable = new JS.Module({
          */
         replaceClass: function(oldClass, newClass) {
             Dom.replaceClass(this, oldClass, newClass);
+            this.trigger('ojay:classremoved', {className: oldClass}, false);
+            this.trigger('ojay:classadded', {className: newClass}, false);
             return this;
         },
         
@@ -1728,7 +2807,10 @@ Ojay.Observable = new JS.Module({
          * @returns {DomCollection}
          */
         setClass: function(className) {
-            return this.setAttributes({className: className});
+            for (var i = 0, n = this.length; i < n; i++)
+                this[i].className = className;
+            this.trigger('ojay:classadded', {className: className}, false);
+            return this;
         },
         
         /**
@@ -1775,33 +2857,49 @@ Ojay.Observable = new JS.Module({
                 }
                 Dom.setStyle(this, property, options[property]);
             }
+            this.trigger('ojay:stylechange', {styles: options}, false);
             return this;
         },
         
         /**
          * <p>Sets the given HTML attributes of all the elements in the collection, and returns the
-         * collection for chaining. Remember to use <tt>className</tt> for classes, and <tt>htmlFor</tt>
-         * for label attributes.</p>
+         * collection for chaining. Use <tt>setClass()</tt> to change class names.</p>
          *
-         * <pre><code>    Ojay('img').setAttributes({src: 'images/tom.png'});</code></pre>
+         * <pre><code>    Ojay('img').set({src: 'images/tom.png'});</code></pre>
          *
-         * @param Object options
-         * @returns DomCollection
+         * <p>Boolean attributes can be set and unset by passing in the appropriate boolean value.</p>
+         *
+         * <pre><code>    Ojay('input[type=checkbox]').set({disabled: true});</code></pre>
+         *
+         * @param {Object} options
+         * @returns {DomCollection}
          */
-        setAttributes: function(options) {
+        set: function(options) {
             for (var i = 0, n = this.length; i < n; i++) {
-                for (var key in options)
-                    this[i][key] = options[key];
+                for (var key in options) {
+                    switch (options[key]) {
+                        case true:  this[i].setAttribute(key, key);     break;
+                        case false: this[i].removeAttribute(key);       break;
+                        default:    this[i].setAttribute(key, options[key]);
+                    }
+                }
             }
+            this.trigger('ojay:attrchange', {attributes: options}, false);
             return this;
         },
+        
+        setAttributes: function() {
+            return this.set.apply(this, arguments);
+        }.traced('setAttributes() is deprecated; used set() instead', 'warn'),
         
         /**
          * <p>Hides every element in the collection and returns the collection.</p>
          * @returns {DomCollection}
          */
         hide: function() {
-            return this.setStyle({display: 'none'});
+            this.setStyle({display: 'none'});
+            this.trigger('ojay:hide', {}, false);
+            return this;
         },
         
         /**
@@ -1809,7 +2907,9 @@ Ojay.Observable = new JS.Module({
          * @returns {DomCollection}
          */
         show: function() {
-            return this.setStyle({display: ''});
+            this.setStyle({display: ''});
+            this.trigger('ojay:show', {}, false);
+            return this;
         },
         
         /**
@@ -1832,6 +2932,7 @@ Ojay.Observable = new JS.Module({
                     element.insert(html, 'bottom');
                 });
             }
+            this.trigger('ojay:contentchange', {content: html}, true);
             return this;
         },
         
@@ -1858,6 +2959,7 @@ Ojay.Observable = new JS.Module({
             if (position == 'replace') return this.setContent(html);
             if (html instanceof this.klass) html = html.node;
             new Ojay.DomInsertion(this.toArray(), html, position);
+            this.trigger('ojay:insert', {content: html, position: position}, true);
             return this;
         },
         
@@ -1870,6 +2972,7 @@ Ojay.Observable = new JS.Module({
                 if (element.parentNode)
                     element.parentNode.removeChild(element);
             });
+            this.trigger('ojay:remove', {}, true);
             return this;
         },
         
@@ -1880,7 +2983,7 @@ Ojay.Observable = new JS.Module({
          */
         matches: function(selector) {
             if (!this.node) return undefined;
-            return YAHOO.util.Selector.test(this.node, selector);
+            return Ojay.cssEngine.test(this.node, selector);
         },
         
         /**
@@ -1956,7 +3059,7 @@ Ojay.Observable = new JS.Module({
             selector = selector || '*';
             var descendants = [];
             this.toArray().forEach(function(element) {
-                var additions = Ojay.query(selector, element), arg;
+                var additions = Ojay.cssEngine.query(selector, element), arg;
                 while (arg = additions.shift()) {
                     if (descendants.indexOf(arg) == -1)
                         descendants.push(arg);
@@ -2007,6 +3110,7 @@ Ojay.Observable = new JS.Module({
                 var reg = element.getRegion(), w = reg.getWidth(), h = reg.getHeight();
                 element.setStyle({width: (2 * width - w) + 'px', height: (2 * height - h) + 'px'});
             });
+            this.trigger('ojay:regionfit', {}, false);
             return this;
         },
         
@@ -2136,6 +3240,7 @@ Ojay.Observable = new JS.Module({
 
 Ojay.fn = Ojay.DomCollection.prototype;
 
+
 /**
  * <p>The <tt>DomInsertion</tt> class is used to insert new strings and elements into the DOM.
  * It should not be used as a public API; you should use <tt>DomCollection</tt>'s <tt>insert</tt>
@@ -2148,7 +3253,7 @@ Ojay.fn = Ojay.DomCollection.prototype;
  * @contructor
  * @class DomInsertion
  */
-Ojay.DomInsertion = new JS.Class(/** @scope Ojay.DomInsertion.prototype */{
+Ojay.DomInsertion = new JS.Class('Ojay.DomInsertion', /** @scope Ojay.DomInsertion.prototype */{
     
     /**
      * @param {Array|HTMLElement} elements
@@ -2250,6 +3355,7 @@ Ojay.DomInsertion = new JS.Class(/** @scope Ojay.DomInsertion.prototype */{
     }
 });
 
+
 /**
  * <p>Sane DOM node creation API, inspired by
  * <a href="http://api.rubyonrails.org/classes/Builder/XmlMarkup.html"><tt>Builder::XmlMarkup</tt></a>
@@ -2330,7 +3436,7 @@ Ojay.DomInsertion = new JS.Class(/** @scope Ojay.DomInsertion.prototype */{
  * @constructor
  * @class HtmlBuilder
  */
-Ojay.HtmlBuilder = new JS.Class(/* @scope Ojay.HtmlBuilder.prototype */{
+Ojay.HtmlBuilder = new JS.Class('Ojay.HtmlBuilder', /* @scope Ojay.HtmlBuilder.prototype */{
     
     /**
      * @param {HTMLElement} node
@@ -2355,8 +3461,13 @@ Ojay.HtmlBuilder = new JS.Class(/* @scope Ojay.HtmlBuilder.prototype */{
         },
         
         addTagName: function(name) {
-            this.prototype[name] = function() {
-                var node = document.createElement(name), arg, attr, style, appendable;
+            this.define(name, function() {
+                var node = document.createElement(name), arg, attr, style, appendable,
+                    type = (arguments[0]||{}).type || 'text';
+                
+                if (YAHOO.env.ua.ie && name == 'input')
+                    node = document.createElement('<input type="' + type + '">');
+                
                 loop: for (var j = 0, m = arguments.length; j < m; j++) {
                     arg = arguments[j];
                     
@@ -2385,7 +3496,7 @@ Ojay.HtmlBuilder = new JS.Class(/* @scope Ojay.HtmlBuilder.prototype */{
                 }
                 if (this._rootNode) this._rootNode.appendChild(node);
                 return node;
-            };
+            });
         },
         
         /**
@@ -2429,6 +3540,7 @@ JS.extend(Ojay.HTML, /** @scope Ojay.HTML */{
     NOTATION_NODE:                  12
 });
 
+
 /**
  * @overview
  * <p>The <tt>Animation</tt> class is used to set up all animations in Ojay. It is entirely
@@ -2437,19 +3549,25 @@ JS.extend(Ojay.HTML, /** @scope Ojay.HTML */{
  * @constructor
  * @class Animation
  */
-Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
+Ojay.Animation = new JS.Class('Ojay.Animation', /** @scope Ojay.Animation.prototype */{
+    
+    extend: /** @scope Ojay.Animation */{
+        DEFAULT_YUI_CLASS: YAHOO.util.ColorAnim
+    },
     
     /**
      * @param {DomCollection} elements
      * @param {Object|Function} parameters
      * @param {Number|Function} duration
      * @param {Object} options
+     * @param {klass} animationClass
      */
-    initialize: function(elements, parameters, duration, options) {
+    initialize: function(elements, parameters, duration, options, animationClass) {
         this._collection        = elements;
         this._parameters        = parameters || {};
         this._duration          = duration || 1.0;
         this._options           = options || {};
+        this._animClass         = animationClass || this.klass.DEFAULT_YUI_CLASS;
         this._easing            = YAHOO.util.Easing[this._options.easing || 'easeBoth'];
         var after = this._options.after, before = this._options.before;
         this._afterCallback     = after && Function.from(after);
@@ -2465,7 +3583,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
      */
     _evaluateOptions: function(options, element, i) {
         if (typeof options == 'function') options = options(i, element);
-        if (typeof options != 'object') return options;
+        if ((options instanceof Array) || (typeof options != 'object')) return options;
         var results = {};
         for (var field in options) results[field] = arguments.callee(options[field], element, i);
         return results;
@@ -2482,14 +3600,16 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
         var callbackAttached = false;
         
         var after = this._afterCallback, before = this._beforeCallback;
+        this._collection.trigger('ojay:animstart', {}, false);
         
         this._collection.forEach(function(element, i) {
             var parameters = paramSets[i], duration = durations[i];
-            var anim = new YAHOO.util.ColorAnim(element.node, parameters, duration, this._easing);
+            var anim = new this._animClass(element.node, parameters, duration, this._easing);
             anim.onComplete.subscribe(function() {
                 if (YAHOO.env.ua.ie && (parameters.opacity || {}).to !== undefined)
                     element.setStyle({opacity: parameters.opacity.to});
                 
+                element.trigger('ojay:animend', {}, false);
                 if (after) after(element, i);
                 
                 if (duration == maxDuration && !callbackAttached) {
@@ -2503,6 +3623,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
     }
 });
 
+
 (function(Region) {
     /**
      * <p>The <tt>Region</tt> class wraps YUI's <tt>Region</tt> class and extends its API. This
@@ -2511,7 +3632,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
      * @constructor
      * @class Region
      */
-    Ojay.Region = new JS.Class(/** @scope Ojay.Region.prototype */{
+    Ojay.Region = new JS.Class('Ojay.Region', /** @scope Ojay.Region.prototype */{
         
         contains:   Region.prototype.contains,
         getArea:    Region.prototype.getArea,
@@ -2583,6 +3704,22 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
         },
         
         /**
+         * @param {Number} left
+         * @param {Number} top
+         * @returns {Region}
+         */
+        centerOn: function(left, top) {
+            var myCenter = this.getCenter(), theirCenter;
+            if (typeof left == 'object') {
+                theirCenter = left.getCenter();
+                left = theirCenter.left;
+                top = theirCenter.top;
+            }
+            this.shift(left - myCenter.left, top - myCenter.top);
+            return this;
+        },
+        
+        /**
          * @param {Region} region
          * @returns {Region}
          */
@@ -2631,6 +3768,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
     });
 })(YAHOO.util.Region);
 
+
 /**
  * <p>The <tt>Sequence</tt> class allows iteration over an array using a timer to
  * skip from member to member. At each timeframe, the sequence object calls a user-
@@ -2639,7 +3777,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
  * @constructor
  * @class Ojay.Sequence
  */
-Ojay.Sequence = new JS.Class(/** @scope Ojay.Sequence.prototype */{
+Ojay.Sequence = new JS.Class('Ojay.Sequence', /** @scope Ojay.Sequence.prototype */{
     
     /**
      * @param {Array} list
@@ -2722,7 +3860,7 @@ Ojay.Sequence = new JS.Class(/** @scope Ojay.Sequence.prototype */{
  *     var element = Ojay('#something');
  *     
  *     var sequence = imgs.sequence(function(imgageSource, i) {
- *         element.setAttributes({src: imageSource});
+ *         element.set({src: imageSource});
  *     });
  *     
  *     // Start sequence looping with a time period
@@ -2759,17 +3897,27 @@ Ojay.DomCollection.include(/** @scope Ojay.DomCollection.prototype */{
     }
 });
 
+
 JS.MethodChain.addMethods(Ojay);
-JS.MethodChain.addMethods(Ojay.HTML);
 
-// Modify MethodChain to allow CSS selectors
-JS.MethodChain.prototype._ = JS.MethodChain.prototype._.wrap(function() {
-    var args = Array.from(arguments), _ = args.shift();
-    if (typeof args[0] == 'string') return _(Ojay, args[0]);
-    else return _.apply(this, args);
-});
+(function() {
+    // ObjectMethods will be renamed to Kernel in JS.Class 2.1
+    var kernel = JS.ObjectMethods || JS.Kernel;
+    
+    var convertSelectors = function() {
+        var args = Array.from(arguments), _ = args.shift();
+        if (typeof args[0] == 'string') return _(Ojay, args[0]);
+        else return _.apply(this, args);
+    };
+    
+    // Modify MethodChain to allow CSS selectors
+    JS.MethodChain.prototype._ = JS.MethodChain.prototype._.wrap(convertSelectors);
+    
+    kernel.include({
+        _: kernel.instanceMethod('_').wrap(convertSelectors)
+    });
+})();
 
-Ojay.VERSION = '0.2.0';
 
 /**
  * @overview
@@ -2811,7 +3959,7 @@ Ojay.VERSION = '0.2.0';
  * the response and inserting it into the document. Its methods are listed below. You can use the
  * <tt>response</tt> methods to chain after HTTP calls for more sentence-like code:</p>
  *
- * <pre><code>    Ojay.HTTP.GET('/index.html').insertInto('#container').evalScriptTags();</pre></code>
+ * <pre><code>    Ojay.HTTP.GET('/index.html').insertInto('#container').evalScripts();</pre></code>
  *
  * <p>It's best to use this chaining for really simple stuff -- just remember the chain is called
  * asynchronously after the HTTP request completes, so any code following a chain like this should
@@ -2841,7 +3989,7 @@ Ojay.VERSION = '0.2.0';
  * the POST request is made, it will be executed and the return value will be sent to the server
  * in the <tt>width</tt> parameter.</p>
  */
-Ojay.HTTP = new JS.Singleton(/** @scope Ojay.HTTP */{
+Ojay.HTTP = new JS.Singleton('Ojay.HTTP', /** @scope Ojay.HTTP */{
     include: Ojay.Observable,
     
     /**
@@ -2875,12 +4023,13 @@ Ojay.HTTP.VERBS.forEach(function(verb) {
  * @constructor
  * @class HTTP.Request
  */
-Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
+Ojay.HTTP.Request = new JS.Class('Ojay.HTTP.Request', /** @scope Ojay.HTTP.Request.prototype */{
     
     /**
      * @param {String} verb         One of 'GET', 'POST', 'PUT', 'DELETE', or 'HEAD'
      * @param {String} url          The URL to request
-     * @param {Object} parameters   Key-value pairs to be used as a query string or POST message
+     * @param {Object} parameters   Key-value pairs to be used as a query string or POST message;
+     *                              alternatively, a string to be used as a POST request body.
      * @param {Object} callbacks    Object containing callback functions
      */
     initialize: function(verb, url, parameters, callbacks) {
@@ -2888,6 +4037,7 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
         if (Ojay.HTTP.VERBS.indexOf(this.verb) == -1) return;
         this._url           = url;
         this._parameters    = parameters || {};
+        if (typeof callbacks != 'object') callbacks = {onSuccess: callbacks};
         this._callbacks     = callbacks || {};
         this.chain          = new JS.MethodChain();
     },
@@ -2897,16 +4047,19 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
      */
     getURI: function() {
         if (this.uri) return this.uri;
-        return this.uri = Ojay.URI.build(this._url, this._parameters);
+        var params = (typeof this._parameters == 'string') ? {} : this._parameters;
+        return this.uri = Ojay.URI.build(this._url, params);
     },
     
     /**
      * <p>Makes the HTTP request and sets up all the callbacks.</p>
      */
     _begin: function() {
-        var uri         = this.getURI();
-        var url         = (this.verb == 'POST') ? uri._getPathWithHost() : uri.toString();
-        var postData    = (this.verb == 'POST') ? uri.getQueryString() : undefined;
+        var post        = (this.verb == 'POST'),
+            uri         = this.getURI(),
+            url         = post ? uri._getPathWithHost() : uri.toString(),
+            postData    = post ? this._getPostData(uri) : undefined;
+        
         Ojay.HTTP.notifyObservers('request', {receiver: this});
         
         YAHOO.util.Connect.asyncRequest(this.verb, url, {
@@ -2942,6 +4095,16 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
             }
             
         }, postData);
+    },
+    
+    /**
+     * @param {URI} uri
+     * @returns {String}
+     */
+    _getPostData: function(uri) {
+        return (typeof this._parameters == 'string')
+                ? this._parameters
+                : uri.getQueryString();
     }
 });
 
@@ -2955,7 +4118,7 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
  * @constructor
  * @class HTTP.Response
  */
-Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
+Ojay.HTTP.Response = new JS.Class('Ojay.HTTP.Response', /** @scope Ojay.HTTP.Response.prototype */{
     
     /**
      * @param {HTTP.Request} request an HTTP.Request object
@@ -2999,15 +4162,9 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
      */
     parseJSON: function() {
         return (this.responseText || '').parseJSON();
-    },
-    
-    /**
-     * @returns {HTTP.Response}
-     */
-    evalScriptTags: function() {
-        return this.evalScripts();
-    }.traced('evalScriptTags() is deprecated. Use evalScripts() instead.', 'warn')
+    }
 });
+
 
 (function() {
     
@@ -3019,11 +4176,27 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
         CSS:    /\.css$/i
     };
     
-    var IFRAME_NAME = '__ojay_cross_domain__';
+    var IFRAME_NAME        = '__ojay_cross_domain__',
+        JSONP_HANDLER_NAME = '__ojay_jsonp_handler__',
+        HANDLER_COUNT      = 0;
     
     var createIframe = function() {
         Ojay(document.body).insert('<iframe name="' + IFRAME_NAME + '" style="display: none;"></iframe>', 'top');
     }.runs(1);
+    
+    var getHandlerId = function() {
+        return JSONP_HANDLER_NAME + (HANDLER_COUNT++);
+    };
+    
+    var handleJsonP = function(callback, data) {
+        var args = Array.from(arguments), callback = args.shift();
+        callback.apply(null, args);
+    };
+    
+    var removeHandler = function(id) {
+        window[id] = null;
+        try { delete window[id] } catch (e) {}
+    }.curry();
     
     var determineAssetType = function(url) {
         switch (true) {
@@ -3104,10 +4277,22 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
          * @param {Object} callbacks    Object containing callback functions
          */
         load: function(url, parameters, callbacks) {
-            var path = Ojay.URI.parse(url).path,
-                assetType = determineAssetType(path);
+            var path      = Ojay.URI.parse(url).path,
+                assetType = determineAssetType(path),
+                uri       = Ojay.URI.build(url, parameters),
+                callbacks = callbacks || {};
             
-            YAHOO.util.Get[assetType](Ojay.URI.build(url, parameters).toString(), callbacks || {});
+            if (typeof callbacks == 'function') callbacks = {onSuccess: callbacks};
+            
+            if (uri.params.jsonp && callbacks.onSuccess) {
+                var handlerID = getHandlerId();
+                uri.setParam(uri.params.jsonp, handlerID);
+                if (uri.params.jsonp !== 'jsonp') delete uri.params.jsonp;
+                window[handlerID] = handleJsonP.partial(callbacks.onSuccess);
+                callbacks.onSuccess = removeHandler(handlerID);
+            }
+            
+            YAHOO.util.Get[assetType](uri.toString(), callbacks);
         },
         
         /**
@@ -3155,11 +4340,12 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
     JS.MethodChain.addMethods(HTTP);
 })();
 
+
 /**
  * @constructor
  * @class URI
  */
-Ojay.URI = new JS.Class({
+Ojay.URI = new JS.Class('Ojay.URI', {
     extend: {
         /**
          * @param {String} string
@@ -3193,7 +4379,7 @@ Ojay.URI = new JS.Class({
             
             if (/^\?/.test(string)) string.slice(1).split('&').forEach(function(pair) {
                 var bits = pair.split('=');
-                uri.setParam(bits[0], bits[1]);
+                uri.setParam(bits[0], bits[1].replace('+', ' '));
             });
             return uri;
         },
@@ -3245,7 +4431,7 @@ Ojay.URI = new JS.Class({
         var string = this._getPathWithHost(), params = [];
         var queryString = this.getQueryString();
         if (queryString.length) string += '?' + queryString;
-        if (this.hash) string += '#' + this.hash;
+        if (typeof this.hash === 'string') string += '#' + this.hash;
         return string;
     },
     
@@ -3335,7 +4521,357 @@ JS.extend(String.prototype, {
     equalsURI:  Ojay.URI.method('compare').methodize()
 });
 
+
+/**
+ * <p><tt>Accordion</tt> implements the well-known accordion menu widget. It allows for both
+ * horizontal and vertical collapse directions, and allows the animation to be configured. Like
+ * all Ojay widgets, it comes with a set of events that you can use to couple an accordion
+ * instance to other parts of your application.</p>
+ *
+ * <p>Creating an accordion is straightforward. Start with a list of elements, each of which
+ * should contain an element that you want to collapse. For example:</p>
+ *
+ * <pre><code>    &lt;div class="section"&gt;
+ *         &lt;h3&gt;Section 1&lt;/h3&gt;
+ *         &lt;p&gt;Lorem ipsum...&lt;/p&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="section"&gt;
+ *         &lt;h3&gt;Section 2&lt;/h3&gt;
+ *         &lt;p&gt;Dolor sit amet...&lt;/p&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="section"&gt;
+ *         &lt;h3&gt;Section 3&lt;/h3&gt;
+ *         &lt;p&gt;Quaniam omnes...&lt;/p&gt;
+ *     &lt;/div&gt;</code></pre>
+ *
+ * <p>In this example, the paragraphs will collapse and the headings will be the menu tabs.
+ * The following script sets up the menu:</p>
+ *
+ * <pre><code>    var acc = new Ojay.Accordion('horizontal',
+ *             '.section', 'p');</code></pre>
+ *
+ * <p>This will make a few changes to the markup, which you'll need to be aware of in order
+ * to apply CSS. After the script runs, the document will look like this:</p>
+ *
+ * <pre><code>    &lt;div class="section accordion-section"&gt;
+ *         &lt;h3&gt;Section 1&lt;/h3&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="accordion-collapsible"&gt;
+ *         &lt;p&gt;Lorem ipsum...&lt;/p&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="section accordion-section"&gt;
+ *         &lt;h3&gt;Section 2&lt;/h3&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="accordion-collapsible"&gt;
+ *         &lt;p&gt;Dolor sit amet...&lt;/p&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="section accordion-section"&gt;
+ *         &lt;h3&gt;Section 3&lt;/h3&gt;
+ *     &lt;/div&gt;
+ *     &lt;div class="accordion-collapsible"&gt;
+ *         &lt;p&gt;Quaniam omnes...&lt;/p&gt;
+ *     &lt;/div&gt;</code></pre>
+ *
+ * <p>The original sections get an additional class to indicate that they're part of an
+ * <tt>Accordion</tt> instance, and the collapsible elements get placed inside a new wrapper
+ * element, outside their original parent. This seems a little odd but is required to work
+ * around a layout bug in WebKit.</p>
+        
+ * @constructor
+ * @class Accordion
+ */
+Ojay.Accordion = new JS.Class('Ojay.Accordion', /** @scope Ojay.Accordion.prototype */{
+    include: Ojay.Observable,
+    
+    extend: /** @scope Ojay.Accordion */{
+        DIRECTIONS: {
+            horizontal:     'HorizontalSection',
+            vertical:       'VerticalSection'
+        }
+    },
+    
+    /**
+     * @param {String} direction
+     * @param {HTMLElement|String} sections
+     * @param {String} collapsible
+     * @param {Object} options
+     */
+    initialize: function(direction, sections, collapsible, options) {
+        this._options     = options || {};
+        this._direction   = direction;
+        this._sections    = sections;
+        this._collapsible = collapsible;
+    },
+    
+    /**
+     * @returns {Accordion}
+     */
+    setup: function() {
+        var SectionClass = this.klass[this.klass.DIRECTIONS[this._direction]];
+        this._sections = Ojay(this._sections).map(function(section, index) {
+            var section = new SectionClass(this, index, section, this._collapsible, this._options);
+            section.on('expand')._(this).notifyObservers('sectionexpand', index, section);
+            section.on('collapse')._(this).notifyObservers('sectioncollapse', index, section);
+            return section;
+        }, this);
+        var state = this.getInitialState();
+        this._sections[state.section].expand(false);
+        return this;
+    },
+    
+    /**
+     * @returns {Object}
+     */
+    getInitialState: function() {
+        return {section: 0};
+    },
+    
+    /**
+     * @param {Object} state
+     * @returns {Accordion}
+     */
+    changeState: function(state) {
+        this._sections[state.section].expand();
+        return this;
+    },
+    
+    /**
+     * @param {Accordion.Section} section
+     * @param {Boolean} animate
+     */
+    _expand: function(section, animate) {
+        if (this._currentSection) this._currentSection.collapse(animate);
+        this._currentSection = section;
+    },
+    
+    /**
+     * @returns {Array}
+     */
+    getSections: function() {
+        return this._sections.slice();
+    },
+    
+    /**
+     * @param {Number} n
+     * @param {Boolean} animate
+     * @returns {Accordion}
+     */
+    expand: function(n, animate) {
+        var section = this._sections[n];
+        if (section) section.expand(animate);
+        return this;
+    },
+    
+    /**
+     * @param {Number} n
+     * @param {Boolean} animate
+     * @returns {Accordion}
+     */
+    collapse: function(n, animate) {
+        var section = this._sections[n];
+        if (section) section.collapse(animate);
+        return this;
+    }
+});
+
+
+Ojay.Accordion.extend(/** @scope Ojay.Accordion */{
+    /**
+     * <p>The <tt>Accordion.Section</tt> class models a single collapsible section within an
+     * accordion menu. Only one section of an accordion may be open at any time. Ojay supports
+     * both vertical and horizontal accordions; these have different methods for size calculations
+     * and are implemented as subclasses. This class should be considered abstract.</p>
+     * @constructor
+     * @class Accordion.Section
+     */
+    Section: new JS.Class('Ojay.Accordion.Section', /** @scope Ojay.Accordion.Section.prototype */{
+        include: Ojay.Observable,
+        
+        extend: /** @scope Ojay.Accordion.Section */{
+            SECTION_CLASS:      'accordion-section',
+            COLLAPSER_CLASS:    'accordion-collapsible',
+            DEFAULT_EVENT:      'click',
+            DEFAULT_DURATION:   0.4,
+            DEFAULT_EASING:     'easeBoth'
+        },
+        
+        /**
+         * <p>To instantiate a section, pass in an <tt>Accordion</tt> instance, the section's
+         * container element, and an element within the container that should be collapsible.
+         * The final argument sets configuration options, passed through from the <tt>Accordion</tt>
+         * constructor.</p>
+         * @param {Accordion} accordion
+         * @param {Number} index
+         * @param {DomCollection} element
+         * @param {String} collapsible
+         * @param {Object} options
+         */
+        initialize: function(accordion, index, element, collapsible, options) {
+            this._accordion = accordion;
+            this._element = element;
+            
+            // Restructure the HTML - wrap the collapsing element with a div for resizing,
+            // and move the collapsing element outside its original parent (workaround for
+            // WebKit layout bug affecting horizontal menus).
+            var target = element.descendants(collapsible).at(0);
+            this._collapser = Ojay( Ojay.HTML.div({className: this.klass.COLLAPSER_CLASS}) );
+            target.insert(this._collapser, 'before');
+            this._collapser.insert(target);
+            this._element.insert(this._collapser, 'after');
+            
+            // Fixes some layout issues in IE
+            this._collapser.setStyle({position: 'relative', zoom: 1});
+            
+            options = options || {};
+            this._duration = options.duration || this.klass.DEFAULT_DURATION;
+            this._easing = options.easing || this.klass.DEFAULT_EASING;
+            
+            this._element.addClass(this.klass.SECTION_CLASS);
+            this._element.on(options.event || this.klass.DEFAULT_EVENT)._(this._accordion).changeState({section: index});
+            
+            if (options.collapseOnClick)
+                this._element.on('click', function() {
+                    if (this._open) this.collapse();
+                }, this);
+            
+            this._open = true;
+            this.collapse(false);
+        },
+        
+        /**
+         * <p>Returns a reference to the outer container element for the section. This element
+         * acts as the click target for toggling visibility.</p>
+         * @returns {DomCollection}
+         */
+        getContainer: function() {
+            return this._element;
+        },
+        
+        /**
+         * <p>Returns a reference to the element that collapses, hiding its content.</p>
+         * @returns {DomCollection}
+         */
+        getCollapser: function() {
+            return this._collapser;
+        },
+        
+        /**
+         * <p>Causes the section to collapse. Pass the parameter <tt>false</tt> to prevent
+         * animation.</p>
+         * @param {Boolean} animate
+         * @returns {Accordion.Section}
+         */
+        collapse: function(animate) {
+            if (!this._open) return this;
+            this._collapser.setStyle({overflow: 'hidden'});
+            this._element.removeClass('expanded').addClass('collapsed');
+            
+            var settings = {};
+            settings[this.param] = (animate === false) ? 0 : {to: 0};
+            
+            var acc = this._accordion;
+            if (animate !== false ) this.notifyObservers('collapse');
+            
+            if (animate === false) {
+                this._collapser.setStyle(settings).setStyle({overflow: 'hidden'});
+                this._open = false;
+                return this;
+            } else {
+                return this._collapser.animate(settings, this._duration, {easing: this._easing})
+                .setStyle({overflow: 'hidden'})
+                ._(function(self) { self._open = false; }, this)
+                ._(this);
+            }
+        },
+        
+        /**
+         * <p>Causes the section to expand. Pass the parameter <tt>false</tt> to prevent
+         * animation. Any section in the same accordion that is currently open will collapse.</p>
+         * @param {Boolean} animate
+         * @returns {Accordion.Section}
+         */
+        expand: function(animate) {
+            if (this._open) return this;
+            this._accordion._expand(this, animate);
+            this._collapser.setStyle({overflow: 'hidden'});
+            this._element.addClass('expanded').removeClass('collapsed');
+            
+            var size = this.getSize(),
+                settings = {},
+                postAnim = {overflow: ''};
+            
+            settings[this.param] = (animate === false) ? '' : {to: size};
+            postAnim[this.param] = '';
+            
+            var acc = this._accordion;
+            if (animate !== false ) this.notifyObservers('expand');
+            
+            if (animate === false) {
+                this._collapser.setStyle(settings).setStyle({overflow: ''});
+                this._open = true;
+                return this;
+            } else {
+                return this._collapser.animate(settings, this._duration, {easing: this._easing})
+                .setStyle(postAnim)
+                ._(function(self) { self._open = true; }, this)
+                ._(this);
+            }
+        }
+    })
+});
+
+Ojay.Accordion.extend(/** @scope Ojay.Accordion */{
+    /**
+     * @constructor
+     * @class Ojay.Accordion.HorizontalSection
+     */
+    HorizontalSection:  new JS.Class('Ojay.Accordion.HorizontalSection', Ojay.Accordion.Section,
+    /** @scope Ojay.Accordion.HorizontalSection.prototype */{
+        param:  'width',
+        
+        /**
+         * <p>Returns the width of the section at full expansion.</p>
+         * @returns {Number}
+         */
+        getSize: function() {
+            var sections = this._accordion.getSections();
+            var sizes = sections.map(function(section) {
+                var collapser = section._collapser, size = collapser.getRegion().getWidth();
+                collapser.setStyle({width: section == this ? '' : 0});
+                return size;
+            }, this);
+            var size = this._collapser.getRegion().getWidth();
+            sections.forEach(function(section, i) {
+                section._collapser.setStyle({width: sizes[i] + 'px'});
+            });
+            return size;
+        }
+    }),
+    
+    /**
+     * @constructor
+     * @class Ojay.Accordion.VerticalSection
+     */
+    VerticalSection:    new JS.Class('Ojay.Accordion.VerticalSection', Ojay.Accordion.Section,
+    /** @scope Ojay.Accordion.VerticalSection.prototype */{
+        param:  'height',
+        
+        /**
+         * <p>Returns the height of the section at full expansion.</p>
+         * @returns {Number}
+         */
+        getSize: function() {
+            if (!this._open) this._collapser.setStyle({height: ''});
+            var size = this._collapser.getRegion().getHeight();
+            if (!this._open) this._collapser.setStyle({height: 0});
+            return size;
+        }
+    })
+});
+
+
 (function() {
+
 
 JS.extend(Ojay, /** @scope Ojay */ {
     /**
@@ -3434,7 +4970,7 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
             case element.every({matches: '[type=radio]'}) :
                 selected = element.map('node').filter({value: value})[0];
                 if (!selected) return;
-                element.setAttributes({checked: false});
+                element.set({checked: false});
                 selected.checked = true;
                 break;
             
@@ -3444,7 +4980,9 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
             
             case element.matches('select') :
                 options = Array.from(element.node.options);
-                selected = options.filter({value: value})[0];
+                selected = options.filter(function(option) {
+                    return (option.value == value) || (option.text == value);
+                })[0];
                 if (!selected) return;
                 options.forEach(function(option) { option.selected = false });
                 selected.selected = true;
@@ -3457,6 +4995,16 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
                 break;
         }
     }.curry(),
+    
+    /**
+     * <p>Submits the given form, routing the submission through our validdation and
+     * ajax routines.</p>
+     * @param {String|HTMLElement} form
+     */
+    submit: function(form) {
+        form = Ojay(form);
+        getForm(form.node.id)._submit();
+    },
     
     /**
      * <p>Goes through all sets of form rules and makes sure each one is associated with
@@ -3484,6 +5032,7 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
     }
 });
 
+
 /**
  * <p>The <tt>FormDescription</tt> class encapsulates sets of rules about how a form is to
  * behave. Each instance holds a set of requirements, which are tested against the form's
@@ -3493,7 +5042,7 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
  * @class FormDescription
  * @private
  */
-var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
+var FormDescription = new JS.Class('Ojay.Forms.FormDescription', /** @scope FormDescription.prototype */{
     include: JS.Observable,
     
     /**
@@ -3525,8 +5074,12 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
         this._names  = {};
         this._form = Ojay.byId(this._formID);
         if (!this._hasForm()) return false;
-        this._form.on('submit', this.method('_handleSubmission'));
         for (var field in this._requirements) this._requirements[field]._attach();
+        
+        this._form.on('submit', function(form, evnt) {
+            if (!this._handleSubmission()) evnt.stopDefault();
+        }, this);
+        
         return true;
     },
     
@@ -3536,7 +5089,7 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
      * @returns {Boolean}
      */
     _hasForm: function() {
-        return this._form && this._form.matches('body form');
+        return this._form && this._form.ancestors('body').node;
     },
     
     /**
@@ -3550,21 +5103,27 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
     },
     
     /**
+     * <p>Submits the form, enforcing validation and Ajax rules.</p>
+     */
+    _submit: function() {
+        if (this._handleSubmission()) this._form.node.submit();
+    },
+    
+    /**
      * <p>Processes form submission events by validating the form and stopping the event
      * from proceeding if the form data is found to be invalid.</p>
-     * @param {DomCollection} form
-     * @param {Event} evnt
      */
-    _handleSubmission: function(form, evnt) {
-        var valid = this._isValid();
-        if (this._ajax || !valid) evnt.stopDefault();
-        if (!this._ajax || !valid) return;
+    _handleSubmission: function() {
+        var allowed = true; valid = this._isValid();
+        if (this._ajax || !valid) allowed = false;
+        if (!this._ajax || !valid) return allowed;
         var form = this._form.node;
         Ojay.HTTP[(form.method || 'POST').toUpperCase()](form.action, this._data, {
             onSuccess: function(response) {
                 this._ajaxResponders.forEach({call: [null, response]});
             }.bind(this)
         });
+        return allowed;
     },
     
     /**
@@ -3670,6 +5229,7 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
     }
 });
 
+
 var isPresent = function(value) {
     return !Ojay.isBlank(value) || ['must not be blank'];
 };
@@ -3683,7 +5243,7 @@ var isPresent = function(value) {
  * @class FormRequirement
  * @private
  */
-var FormRequirement = new JS.Class({
+var FormRequirement = new JS.Class('Ojay.Forms.FormRequirement', {
     /**
      * @param {FormDescription} form
      * @param {String} field
@@ -3715,6 +5275,7 @@ var FormRequirement = new JS.Class({
      * @returns {Array|Boolean}
      */
     _test: function(value, data) {
+        if (!this._visible()) return true;
         var errors = [], tests = this._tests.length ? this._tests : [isPresent], value = value || '';
         tests.forEach(function(block) {
             var result = block(value, data), message, field;
@@ -3724,9 +5285,22 @@ var FormRequirement = new JS.Class({
                 this._form._errors.add(field, message);
             }
         }, this);
-        return errors.length ? errors : true;
+    },
+    
+    /**
+     * @returns {Boolean}
+     */
+    _visible: function() {
+        return !!this._elements && this._elements.reduce(function(truth, element) {
+            var node = element.node;
+            do {
+                if (node.parentNode && Ojay(node).getStyle('display') == 'none') return false;
+            } while (node = node.parentNode)
+            return truth;
+        }, true);
     }
 });
+
 
 /**
  * <p>The <tt>FormData</tt> class provides read-only access to data objects for the
@@ -3738,7 +5312,7 @@ var FormRequirement = new JS.Class({
  * @class FormData
  * @private
  */
-var FormData = new JS.Class(/** @scope FormData.prototype */{
+var FormData = new JS.Class('Ojay.Forms.FormData', /** @scope FormData.prototype */{
     /**
      * @param {Object} data
      */
@@ -3749,6 +5323,7 @@ var FormData = new JS.Class(/** @scope FormData.prototype */{
     }
 });
 
+
 /**
  * <p>The <tt>FormErrors</tt> class provides append-only access to error lists for the
  * purposes of validation. Validation routines cannot modify existing errors or remove
@@ -3757,7 +5332,7 @@ var FormData = new JS.Class(/** @scope FormData.prototype */{
  * @class FormErrors
  * @private
  */
-var FormErrors = new JS.Class(/** @scope FormErrors.prototype */{
+var FormErrors = new JS.Class('Ojay.Forms.FormErrors', /** @scope FormErrors.prototype */{
     initialize: function(form) {
         var errors = {}, base = [];
         
@@ -3831,6 +5406,7 @@ var FormErrors = new JS.Class(/** @scope FormErrors.prototype */{
         };
     }
 });
+
 
 /**
  * @overview
@@ -4030,7 +5606,7 @@ var DSL = {
  * @class FormDSL
  * @private
  */
-var FormDSL = new JS.Class(/** @scope FormDSL.prototype */{
+var FormDSL = new JS.Class('Ojay.Forms.FormDSL', /** @scope FormDSL.prototype */{
     /**
      * @param {FormDescription} form
      */
@@ -4093,7 +5669,7 @@ var FormDSLMethods = ['requires', 'expects', 'validates', 'submitsUsingAjax', 'h
  * @class RequirementDSL
  * @private
  */
-var RequirementDSL = new JS.Class(/** @scope RequirementDSL.prototype */{
+var RequirementDSL = new JS.Class('Ojay.Forms.RequirementDSL', /** @scope RequirementDSL.prototype */{
     /**
      * @param {FormRequirement} requirement
      */
@@ -4256,7 +5832,7 @@ RequirementDSL.include(FormDSLMethods.reduce(function(memo, method) {
  * @class WhenDSL
  * @private
  */
-var WhenDSL = new JS.Class(/** @scope WhenDSL.prototype */{
+var WhenDSL = new JS.Class('Ojay.Forms.WhenDSL', /** @scope WhenDSL.prototype */{
     /**
      * @param {FormDescription} form
      */
@@ -4295,7 +5871,7 @@ var WhenDSL = new JS.Class(/** @scope WhenDSL.prototype */{
  * @class BeforeDSL
  * @private
  */
-var BeforeDSL = new JS.Class({
+var BeforeDSL = new JS.Class('Ojay.Forms.BeforeDSL', {
     /**
      * @param {FormDescription} form
      */
@@ -4311,6 +5887,7 @@ var BeforeDSL = new JS.Class({
     }
 });
 
+
 /**
  * <p>The <tt>Inputable</tt> module is mixed into <tt>Forms.Select</tt>, and indirectly into
  * <tt>Forms.Checkbox</tt> and <tt>Forms.RadioButtons.Item</tt> through <tt>Checkable</tt>.
@@ -4319,8 +5896,12 @@ var BeforeDSL = new JS.Class({
  * @module Inputable
  * @private
  */
-var Inputable = new JS.Module(/** @scope Inputable */{
+var Inputable = new JS.Module('Ojay.Forms.Inputable', /** @scope Inputable */{
     include: Ojay.Observable,
+    
+    extend: {
+        DEFAULT_WRAPPER_POSITION: 'relative'
+    },
     
     /**
      * <p>Called inside class constructors to set up the behaviour of the form input and
@@ -4328,7 +5909,7 @@ var Inputable = new JS.Module(/** @scope Inputable */{
      * enable class names to be changed.</p>
      */
     _setupInput: function() {
-        var wrapper = Ojay( Ojay.HTML.span() ).setStyle({position: 'relative'});
+        var wrapper = Ojay( Ojay.HTML.span() ).setStyle({position: this._options.wrapperPosition || Inputable.DEFAULT_WRAPPER_POSITION});
         this._input.insert(wrapper.node, 'before');
         wrapper.insert(this._input.node, 'bottom');
         this._input.setStyle({position: 'absolute', left: '-5000px', top: 0});
@@ -4406,6 +5987,7 @@ var Inputable = new JS.Module(/** @scope Inputable */{
     }
 });
 
+
 /**
  * <p>The <tt>Checkable</tt> module extends <tt>Inputable</tt> by providing methods to
  * handle checking and unchecking of form elements. It is used by the <tt>Forms.Checkbox</tt>
@@ -4414,7 +5996,7 @@ var Inputable = new JS.Module(/** @scope Inputable */{
  * @private
  * @module Checkable
  */
-var Checkable = new JS.Module(/** @scope Checkable */{
+var Checkable = new JS.Module('Ojay.Forms.Checkable', /** @scope Checkable */{
     include: Inputable,
     
     /**
@@ -4464,6 +6046,7 @@ var Checkable = new JS.Module(/** @scope Checkable */{
 
 JS.MethodChain.addMethod('focus');
 
+
 /**
  * <p>The <tt>Forms.RadioButtons</tt> class can be used to 'hijack' sets of radio buttons to
  * make them easier to style using CSS. The radio inputs themselves become hidden (they are positioned
@@ -4478,14 +6061,15 @@ JS.MethodChain.addMethod('focus');
  * @constructor
  * @class Forms.RadioButtons
  */
-Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype */{
+Ojay.Forms.RadioButtons = new JS.Class('Ojay.Forms.RadioButtons', /** @scope Forms.RadioButtons.prototype */{
     include: Ojay.Observable,
     
     /**
      * @param {String|HTMLElement|DomCollection} inputs
+     * @param {Object} options
      */
-    initialize: function(inputs) {
-        this._items = Ojay(inputs).map(function(input) { return new this.klass.Item(this, input); }, this);
+    initialize: function(inputs, options) {
+        this._items = Ojay(inputs).map(function(input) { return new this.klass.Item(this, input, options); }, this);
         if (this._items.map('_input.node.name').unique().length > 1)
             throw new Error('Attempt to create a RadioButtons object with radios of different names');
         this._checkedItem = this._items.filter('checked')[0] || null;
@@ -4557,15 +6141,17 @@ Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype *
          * @constructor
          * @class Forms.RadioButtons.Item
          */
-        Item: new JS.Class(/** @scope Forms.RadioButtons.Item.prototype */{
+        Item: new JS.Class('Ojay.Forms.RadioButtons.Item', /** @scope Forms.RadioButtons.Item.prototype */{
             include: Checkable,
             _inputType: 'radio',
             
             /**
              * @param {Forms.RadioButtons} group
              * @param {DomCollection} input
+             * @param {Object} options
              */
-            initialize: function(group, input) {
+            initialize: function(group, input, options) {
+                this._options = options || {};
                 styledInputs.push(this);
                 if (!input || !input.node || input.node.type != 'radio')
                     throw new TypeError('Attempt to create a RadioButtons object with non-radio element');
@@ -4576,6 +6162,7 @@ Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype *
         })
     }
 });
+
 
 /**
  * <p>The <tt>Forms.Checkbox</tt> class can be used to 'hijack' checkbox inputs in HTML forms to
@@ -4591,14 +6178,16 @@ Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype *
  * @constructor
  * @class Forms.Checkbox
  */
-Ojay.Forms.Checkbox = new JS.Class(/* @scope Forms.Checkbox.prototype */{
+Ojay.Forms.Checkbox = new JS.Class('Ojay.Forms.Checkbox', /* @scope Forms.Checkbox.prototype */{
     include: Checkable,
     _inputType: 'checkbox',
     
     /**
      * @param {String|HTMLElement|DomCollection} input
+     * @param {Object} options
      */
-    initialize: function(input) {
+    initialize: function(input, options) {
+        this._options = options || {};
         styledInputs.push(this);
         this._input = Ojay(input);
         if (!this._input || !this._input.node || this._input.node.type != 'checkbox')
@@ -4626,6 +6215,7 @@ Ojay.Forms.Checkbox.include({
     setValue:   Ojay.Forms.Checkbox.prototype.setChecked
 });
 
+
 /**
  * <p>The <tt>Forms.Select</tt> class can be used to 'hijack' drop-down menu inputs in HTML forms to
  * make them easier to style using CSS. The select inputs themselves become hidden (they are positioned
@@ -4640,7 +6230,7 @@ Ojay.Forms.Checkbox.include({
  * @constructor
  * @class Forms.Select
  */
-Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
+Ojay.Forms.Select = new JS.Class('Ojay.Forms.Select', /** @scope Forms.Select.prototype */{
     include: [JS.State, Inputable],
     _inputType: 'select',
     
@@ -4654,7 +6244,7 @@ Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
          * @constructor
          * @class Forms.Select.Option
          */
-        Option: new JS.Class(/** @scope Forms.Select.Option.prototype */{
+        Option: new JS.Class('Ojay.Forms.Select.Option', /** @scope Forms.Select.Option.prototype */{
             /**
              * @param {Forms.Select} select
              * @param {HTMLElement} option
@@ -4712,8 +6302,10 @@ Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
     
     /**
      * @param {String|HTMLElement|DomCollection} select
+     * @param {Object} options
      */
-    initialize: function(select) {
+    initialize: function(select, options) {
+        this._options = options || {};
         styledInputs.push(this);
         this._input = Ojay(select);
         if (!this._input || this._input.node.tagName.toLowerCase() != 'select')
@@ -4957,7 +6549,9 @@ Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
     }
 });
 
+
 })();
+
 
 /**
  * @overview
@@ -5237,8 +6831,10 @@ Ojay.History = (function(History) {
     };
 })(YAHOO.util.History);
 
+
 (function(KeyListener, Event, doc) {
     var KEYS = KeyListener.KEY;
+
 
 var /**
      * @param {String} string
@@ -5305,6 +6901,7 @@ var /**
         return codes.sort(compareNumbers).join(':');
     };
 
+
 /**
  * <p>The <tt>Keyboard</tt> package is used to set up event listeners that respond to keyboard
  * events. It acts as a wrapper around <tt>YAHOO.util.KeyListener</tt> and provides easier syntax
@@ -5315,7 +6912,7 @@ var /**
  * <p>This returns a <tt>Rule</tt> instance that lets you disable/enable the listener. See the
  * <tt>Rule</tt> class for more details.</p>
  */
-var Keyboard = Ojay.Keyboard = new JS.Singleton({
+var Keyboard = Ojay.Keyboard = new JS.Singleton('Ojay.Keyboard', {
     
     /**
      * <p>Returns a new <tt>Rule</tt> instance for the given node and key combination.</p>
@@ -5341,6 +6938,7 @@ var Keyboard = Ojay.Keyboard = new JS.Singleton({
     }
 });
 
+
 /**
  * <p> The <tt>Rule</tt> class encapsulates the binding of an action to a set of keys. It is
  * private, i.e. it is only accessible to the internals of the <tt>Keyboard</tt> module, but
@@ -5349,7 +6947,7 @@ var Keyboard = Ojay.Keyboard = new JS.Singleton({
  * @private
  * @class Rule
  */
-var Rule = new JS.Class({
+var Rule = new JS.Class('Ojay.Keyboard.Rule', {
     /**
      * @param {HTMLElement} node
      * @param {String|Array} keylist
@@ -5357,7 +6955,14 @@ var Rule = new JS.Class({
      * @param {Object} scope
      */
     initialize: function(node, keylist, callback, scope) {
+        var args = Array.from(arguments);
         node = Ojay(node).node;
+        if (!node) {
+            node     = document;
+            keylist  = args.shift();
+            callback = args.shift();
+            scope    = args.shift();
+        }
         if (scope) callback = callback.bind(scope);
         this._codes = codesFromKeys(keylist);
         this._listener = new KeyListener(node, hashFromCodes(this._codes), callback);
@@ -5431,15 +7036,23 @@ var Rule = new JS.Class({
  * @public
  * @class RuleSet
  */
-Keyboard.RuleSet = new JS.Class({
+Keyboard.RuleSet = new JS.Class('Ojay.Keyboard.RuleSet', {
     /**
+     * @param {HTMLElement} node
      * @param {Object} definitions
      */
-    initialize: function(definitions) {
+    initialize: function(node, definitions) {
+        var args = Array.from(arguments);
+        node = Ojay(node).node;
+        if (!node) {
+            node        = document;
+            definitions = args.shift();
+        }
+        this._node = node;
         this._rules = {};
         var keylist, rule;
         for (keylist in definitions) {
-            rule = new Rule(document, keylist, definitions[keylist]);
+            rule = new Rule(node, keylist, definitions[keylist]);
             // Store rules by signature to prevent duplicate key combinations
             this._rules[rule.getSignature()] = rule;
         }
@@ -5497,13 +7110,14 @@ Keyboard.RuleSet = new JS.Class({
     }
 });
 
+
 /**
  * <p>The <tt>Monitor</tt> is a private component used by the Keyboard package to track
  * the current combination of pressed keys. Event handlers notify this object with keys
  * to add and remove from the list. This object may be consulted to find out whether
  * a particular key code is pressed.</p>
  */
-var Monitor = new JS.Singleton({
+var Monitor = new JS.Singleton('Ojay.Keyboard.Monitor', {
     _list: [],
     
     /**
@@ -5540,13 +7154,14 @@ var Monitor = new JS.Singleton({
     }
 });
 
+
 /**
  * <p>The <tt>Disabler</tt> is in charge of deciding whether to prevent the default browser
  * behaviour for a given set of keys. Keyboard rules register with this object to cause
  * their behaviour to override the default behaviour. Some browsers do not allow certain
  * key comibnations to be overridden, so choose your key combinations carefully.</p>
  */
-var Disabler = new JS.Singleton({
+var Disabler = new JS.Singleton('Ojay.Keyboard.Disabler', {
     _rules: [],
     
     /**
@@ -5591,6 +7206,7 @@ var Disabler = new JS.Singleton({
     }
 });
 
+
 /**
  * <p>On keydown events, add the new key to the <tt>Monitor</tt> and decide whether
  * to stop the event in IE browsers.</p>
@@ -5617,7 +7233,9 @@ Event.on(doc, 'keyup', function(evnt) {
     Monitor._removeKey(evnt.keyCode);
 });
 
+
 })(YAHOO.util.KeyListener, YAHOO.util.Event, document);
+
 
 /**
  * @overview
@@ -5651,7 +7269,7 @@ Event.on(doc, 'keyup', function(evnt) {
  * the <tt>position</tt> argument. Again, use <tt>scope</tt> to set the meaning of <tt>this</tt>
  * inside the callback.</p>
  */
-Ojay.Mouse = new JS.Singleton(/** @scope Ojay.Mouse */{
+Ojay.Mouse = new JS.Singleton('Ojay.Mouse', /** @scope Ojay.Mouse */{
     include: JS.Observable,
     
     initialize: function() {
@@ -5744,6 +7362,7 @@ Ojay.DomCollection.include({on: Ojay.DomCollection.prototype.on.wrap(function() 
     return collector;
 })});
 
+
 (function(Ojay) {
 /**
  * <p>Returns a function that performs the given method while an overlay is hidden. Use
@@ -5830,7 +7449,7 @@ var whileHidden = function(method) {
  * @constructor
  * @class Overlay
  */
-Ojay.Overlay = new JS.Class(/** @scope Ojay.Overlay.prototype */{
+Ojay.Overlay = new JS.Class('Ojay.Overlay', /** @scope Ojay.Overlay.prototype */{
     include: [JS.State, Ojay.Observable],
     
     extend: /** @scope Ojay.Overlay */{
@@ -5872,7 +7491,7 @@ Ojay.Overlay = new JS.Class(/** @scope Ojay.Overlay.prototype */{
          *
          * @class Overlay.Transitions
          */
-        Transitions: new JS.Singleton(/** @scope Ojay.Overlay.Transitions */{
+        Transitions: new JS.Singleton('Ojay.Overlay.Transitions', /** @scope Ojay.Overlay.Transitions */{
             _store: {},
             
             /**
@@ -6264,6 +7883,7 @@ Ojay.Overlay = new JS.Class(/** @scope Ojay.Overlay.prototype */{
     }
 });
 
+
 /**
  * @overview
  * <p>This file defines a set of transition effects for hiding and showing overlay elements.
@@ -6344,6 +7964,7 @@ Ojay.Overlay.Transitions
     }
 });
 
+
 /**
  * <p>The <tt>ContentOverlay</tt> class extends <tt>Overlay</tt> and provides the most generally
  * useful form of overlay. Much of its API it inherits from <tt>Overlay</tt>, but it provides a
@@ -6359,7 +7980,7 @@ Ojay.Overlay.Transitions
  * @constructor
  * @class ContentOverlay
  */
-Ojay.ContentOverlay = new JS.Class(Ojay.Overlay, /** @scope Ojay.ContentOverlay.prototype */{
+Ojay.ContentOverlay = new JS.Class('Ojay.ContentOverlay', Ojay.Overlay, /** @scope Ojay.ContentOverlay.prototype */{
     extend: /** @scope Ojay.ContentOverlay */{
         CONTENT_CLASS:      'overlay-content'
     },
@@ -6440,13 +8061,26 @@ Ojay.ContentOverlay = new JS.Class(Ojay.Overlay, /** @scope Ojay.ContentOverlay.
         VISIBLE: /** @scope Ojay.ContentOverlay.prototype */{
             /**
              * <p>Sets the size of the overlay to just contain its content.</p>
+             * @param {Object} options
              * @returns {ContentOverlay}
              */
-            fitToContent: function() {
-                var region = this._elements._content.getRegion();
-                return this.setSize(region.getWidth(), region.getHeight());
+            fitToContent: function(options) {
+                var options     = options || {},
+                    animate     = !!options.animate,
+                    balance     = !!options.balance,
+                    innerRegion = this._elements._content.getRegion(),
+                    outerRegion = this.getRegion();
+                
+                if (balance) innerRegion.centerOn(outerRegion);
+                
+                if (animate) return this.resize(innerRegion, options);
+                
+                this.setSize(innerRegion.getWidth(), innerRegion.getHeight());
+                this.setPosition(innerRegion.left, innerRegion.top);
+                return this;
     }   }   }
 });
+
 
 /**
  * <p><tt>Tooltip</tt> is a subclass of <tt>ContentOverlay</tt> that provides overlays that
@@ -6455,7 +8089,7 @@ Ojay.ContentOverlay = new JS.Class(Ojay.Overlay, /** @scope Ojay.ContentOverlay.
  * @constructor
  * @class Tooltip
  */
-Ojay.Tooltip = new JS.Class(Ojay.ContentOverlay, /** @scope Ojay.Tooltip.prototype */{
+Ojay.Tooltip = new JS.Class('Ojay.Tooltip', Ojay.ContentOverlay, /** @scope Ojay.Tooltip.prototype */{
     /**
      * <p>Initializes the tooltip. The constructor differs from that of its parent classes
      * in that you must pass in the text for the tooltip as the first argument, followed
@@ -6498,6 +8132,7 @@ Ojay.Tooltip = new JS.Class(Ojay.ContentOverlay, /** @scope Ojay.Tooltip.prototy
 
 Ojay(document).on('mousemove', Ojay.Tooltip.method('update'));
 
+
 /**
  * <p>The <tt>PageMask</tt> class is a subtype of <tt>Overlay</tt> that represents elements used
  * to obscure the rest of the document while an overlay is visible. This allows easy creation of
@@ -6507,7 +8142,7 @@ Ojay(document).on('mousemove', Ojay.Tooltip.method('update'));
  * @constructor
  * @class PageMask
  */
-Ojay.PageMask = new JS.Class(Ojay.Overlay, /** @scope Ojay.PageMask.prototype */{
+Ojay.PageMask = new JS.Class('Ojay.PageMask', Ojay.Overlay, /** @scope Ojay.PageMask.prototype */{
     extend: /** @scope Ojay.PageMask */{
         DEFAULT_COLOR:  '000000',
         DEFAULT_OPACITY:    0.5,
@@ -6594,7 +8229,9 @@ Ojay.PageMask = new JS.Class(Ojay.Overlay, /** @scope Ojay.PageMask.prototype */
 if (YAHOO.env.ua.ie)
     Ojay(window).on('resize', Ojay.PageMask.method('resizeAll'));
 
+
 })(Ojay);
+
 
 /**
  * <p>The <tt>Paginator</tt> class is used to replace large blocks of content with a smaller,
@@ -6652,7 +8289,7 @@ if (YAHOO.env.ua.ie)
  * @constructor
  * @class Paginator
  */
-Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
+Ojay.Paginator = new JS.Class('Ojay.Paginator', /** @scope Ojay.Paginator.prototype */{
     include: [Ojay.Observable, JS.State],
     
     extend: /** @scope Ojay.Paginator */{
@@ -6660,8 +8297,24 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
         PAGE_CLASS:         'page',
         ITEM_CLASS:         'item',
         SCROLL_TIME:        0.5,
+        PUSH_FADE_TIME:     0.7,
+        PUSH_SLIDE_TIME:    0.3,
         DIRECTION:          'horizontal',
-        EASING:             'easeBoth'
+        EASING:             'easeBoth',
+        
+        /**
+         * @param {Number} width
+         * @param {Number} height
+         * @returns {DomCollection}
+         */
+        makePageElement: function(width, height) {
+            var div = Ojay( Ojay.HTML.div({className: this.PAGE_CLASS}) );
+            div.setStyle({
+                'float': 'left', width: width + 'px', height: height + 'px',
+                margin: '0 0 0 0', padding: '0 0 0 0', border: 'none'
+            });
+            return div;
+        }
     },
     
     /**
@@ -6685,8 +8338,12 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
         
         options = this._options = options || {};
         options.scrollTime = options.scrollTime || this.klass.SCROLL_TIME;
-        options.direction = options.direction || this.klass.DIRECTION;
-        options.easing = options.easing || this.klass.EASING;
+        options.pushFade   = options.pushFade   || this.klass.PUSH_FADE_TIME;
+        options.pushSlide  = options.pushSlide  || this.klass.PUSH_SLIDE_TIME;
+        options.direction  = options.direction  || this.klass.DIRECTION;
+        options.easing     = options.easing     || this.klass.EASING;
+        options.looped     = !!options.looped;
+        options.infinite   = !!options.infinite;
         
         this.setState('CREATED');
     },
@@ -6700,10 +8357,12 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
     
     /**
      * @param {Object} state
+     * @param {Function} callback
+     * @param {Object} scope
      * @returns {Paginator}
      */
-    changeState: function(state) {
-        if (state.page !== undefined) this._handleSetPage(state.page);
+    changeState: function(state, callback, scope) {
+        if (state.page !== undefined) this._handleSetPage(state.page, callback, scope);
         return this;
     },
     
@@ -6744,6 +8403,14 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
     },
     
     /**
+     * <p>Returns a boolean to indicate whether the paginator loops.</p>
+     * @returns {Boolean}
+     */
+    isLooped: function() {
+        return !!this._options.looped || !!this._options.infinite;
+    },
+    
+    /**
      * <p>Returns an Ojay collection wrapping the wrapper element added to your document to
      * contain the original content element and let it slide.</p>
      * @returns {DomCollection}
@@ -6772,6 +8439,21 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
     },
     
     /**
+     * @returns {Number}
+     */
+    getTotalOffset: function() {
+        var method = (this._options.direction == 'vertical') ? 'getHeight' : 'getWidth';
+        return this.getRegion()[method]() * (this._numPages - 1);
+    },
+    
+    /**
+     * @returns {Number}
+     */
+    getCurrentOffset: function() {
+        return this._reportedOffset;
+    },
+    
+    /**
      * <p>Returns an Ojay collection wrapping the child elements of the subject.</p>
      * @returns {DomCollection}
      */
@@ -6796,8 +8478,8 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
         var containerRegion = this.getRegion(), itemRegion = items.at(0).getRegion();
         this._itemWidth     = itemRegion.getWidth();
         this._itemHeight    = itemRegion.getHeight();
-        this._itemsPerCol   = (containerRegion.getWidth() / this._itemWidth).floor() || 1;
-        this._itemsPerRow   = (containerRegion.getHeight() / this._itemHeight).floor() || 1;
+        this._itemsPerCol   = (containerRegion.getHeight() / this._itemHeight).floor() || 1;
+        this._itemsPerRow   = (containerRegion.getWidth() / this._itemWidth).floor() || 1;
         this._itemsPerPage  = this._itemsPerRow * this._itemsPerCol;
         this._numPages = (items.length / this._itemsPerPage).ceil();
         if (this._options.grouping !== false) this._groupItemsByPage();
@@ -6811,18 +8493,22 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
      */
     _groupItemsByPage: function() {
         var containerRegion = this.getRegion(),
-            width = containerRegion.getWidth(), height = containerRegion.getHeight(),
-            n = this._itemsPerPage, allItems = this._elements._items.toArray();
+            width           = containerRegion.getWidth(),
+            height          = containerRegion.getHeight(),
+            n               = this._itemsPerPage,
+            allItems        = this._elements._items.toArray();
+        
+        this._elements._pages = [];
+        
         this._numPages.times(function(i) {
             var items = allItems.slice(i * n, (i+1) * n);
-            var div = Ojay( Ojay.HTML.div({className: this.klass.PAGE_CLASS}) );
-            div.setStyle({
-                'float': 'left', width: width + 'px', height: height + 'px',
-                margin: '0 0 0 0', padding: '0 0 0 0', border: 'none'
-            });
+            var div = this.klass.makePageElement(width, height);
             items.forEach(div.method('insert'));
+            this._elements._pages.push(div);
             this._elements._subject.insert(div.node);
         }, this);
+        
+        this._dummyPage = this.klass.makePageElement(width, height);
     },
     
     /**
@@ -6890,9 +8576,21 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
                 
                 var state = this.getInitialState();
                 this.setState('READY');
-                this._currentPage = state.page;
-                this._handleSetPage(state.page);
+                if (this._currentPage === undefined) this._currentPage = state.page;
+                this._handleSetPage(this._currentPage);
                 
+                return this;
+            },
+            
+            /**
+             * <p>Sets the initial page for the paginator to start at when in the CREATED
+             * state. No scrolling takes place, and the number set will override the initial
+             * page setting and any setting pulled in by the history manager.</p>
+             * @param {Number} page
+             * @returns {Paginator}
+             */
+            setPage: function(page) {
+                this._currentPage = Number(page);
                 return this;
             }
         },
@@ -6907,21 +8605,27 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * element. Will fire a <tt>pagechange</tt> event if the page specified is not
              * equal to the current page.</p>
              * @param {Number} page
+             * @param {Function} callback
+             * @param {Object} scope
              * @returns {Paginator}
              */
-            setPage: function(page) {
+            setPage: function(page, callback, scope) {
                 page = Number(page);
-                if (page == this._currentPage || page < 1 || page > this._numPages) return this;
-                this.changeState({page: page});
+                if (this._options.looped && page < 1) page += this._numPages;
+                if (this._options.looped && page > this._numPages) page -= this._numPages;
+                if (!this.isLooped() && (page == this._currentPage || page < 1 || page > this._numPages)) return this;
+                this.changeState({page: page}, callback, scope);
                 return this;
             },
             
             /**
              * <p>Handles request to <tt>changeState()</tt>.</p>
              * @param {Number} page
+             * @param {Function} callback
+             * @param {Object} scope
              */
-            _handleSetPage: function(page) {
-                this.setScroll((page - 1) / (this._numPages - 1), {animate: true});
+            _handleSetPage: function(page, callback, scope) {
+                this.setScroll(this.getTotalOffset() * (page - 1) / (this._numPages - 1), {animate: true}, callback, scope);
             },
             
             /**
@@ -6929,7 +8633,20 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * @returns {Paginator}
              */
             incrementPage: function() {
-                return this.setPage(this._currentPage + 1);
+                var wrapping  = this._options.infinite && (this._currentPage == this._numPages),
+                    firstPage = this._elements._pages[0];
+                
+                if (wrapping)
+                    this._elements._subject
+                      .insert(firstPage, 'bottom')
+                      .insert(this._dummyPage, 'top');
+                
+                return this.setPage(this._currentPage + 1, function() {
+                    if (!wrapping) return;
+                    this._dummyPage.remove();
+                    this._elements._subject.insert(firstPage, 'top');
+                    this.setScroll(0, {animate: false, silent: true});
+                }, this);
             },
             
             /**
@@ -6937,7 +8654,24 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * @returns {Paginator}
              */
             decrementPage: function() {
-                return this.setPage(this._currentPage - 1);
+                var wrapping = this._options.infinite && (this._currentPage == 1),
+                    property = (this._options.direction == 'vertical') ? 'marginTop' : 'marginLeft',
+                    lastPage = this._elements._pages[this._numPages - 1],
+                    settings = {};
+                
+                if (wrapping) {
+                    this._elements._subject.insert(lastPage, 'top');
+                    settings[property] = (-this.getTotalOffset() / (this._numPages - 1)) + 'px';
+                    this._elements._subject.setStyle(settings);
+                }
+                
+                return this.setPage(this._currentPage - 1, function() {
+                    if (!wrapping) return;
+                    this._elements._subject.insert(lastPage, 'bottom');
+                    settings[property] = 0;
+                    this._elements._subject.setStyle(settings);
+                    this.setScroll(1, {animate: false, silent: true});
+                }, this);
             },
             
             /**
@@ -6978,15 +8712,20 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
              * set to <tt>true</tt> will prevent any <tt>scroll</tt> events from firing.</p>
              * @param {Number} amount
              * @param {Object} options
+             * @param {Function} callback
+             * @param {Object} scope
              * @returns {Paginator}
              */
-            setScroll: function(amount, options) {
-                var orientation = this._options.direction, settings;
-                var method = (orientation == 'vertical') ? 'getHeight' : 'getWidth';
-                var pages = this._numPages, total = this.getRegion()[method]() * (pages - 1);
+            setScroll: function(amount, options, callback, scope) {
+                var options     = options || {},
+                    orientation = this._options.direction,
+                    scrollTime  = options._scrollTime || this._options.scrollTime,
+                    pages       = this._numPages,
+                    total       = this.getTotalOffset(),
+                    chain       = new JS.MethodChain(),
+                    settings;
                 
                 if (amount >= 0 && amount <= 1) amount = amount * total;
-                if (amount < 0 || amount > total) return this;
                 
                 this._elements._items.removeClass('focused');
                 options = options || {};
@@ -6997,8 +8736,10 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
                             ? { top: {to: -amount} }
                             : { left: {to: -amount} };
                     this._elements._subject.animate(settings,
-                        this._options.scrollTime, {easing: this._options.easing})._(function(self) {
+                        scrollTime, {easing: this._options.easing})._(function(self) {
                         self.setState('READY');
+                        chain.fire(scope || self);
+                        if (callback) callback.call(scope || null);
                     }, this);
                 } else {
                     settings = (orientation == 'vertical')
@@ -7007,24 +8748,221 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
                     this._elements._subject.setStyle(settings);
                 }
                 
-                if (!options.silent) this.notifyObservers('scroll', amount/total, total);
+                var reportedOffset = amount/total;
+                if (reportedOffset < 0) reportedOffset = 1;
+                if (reportedOffset > 1) reportedOffset = 0;
+                this._reportedOffset = amount;
                 
-                var page = (pages * (amount/total)).ceil() || 1;
+                if (!options.silent) this.notifyObservers('scroll', reportedOffset, total);
+                
+                var page = (pages * reportedOffset).ceil() || 1;
                 if (page != this._currentPage) {
                     this._currentPage = page;
                     this.notifyObservers('pagechange', page);
                     
                     if (page == 1) this.notifyObservers('firstpage');
-                    if (page == this._numPages) this.notifyObservers('lastpage');
+                    if (page == pages) this.notifyObservers('lastpage');
                 }
                 
+                return (options.animate && YAHOO.util.Anim) ? chain : this;
+            },
+            
+            /**
+             * <p>Pushes a new element onto the end of the list of elements contained in the
+             * <tt>Paginator</tt>, creating a new page and firing the <tt>pagecreate</tt>
+             * event if necessary. The <tt>n</tt> parameter is for internal use only, for when
+             * items need to be moved across page boundaries by <tt>shift</tt>/<tt>unshift</tt>
+             * operations.</p>
+             * @param {HTMLElement} element
+             * @param {Number} n
+             * @returns {Paginator}
+             */
+            push: function(element, n) {
+                n = (n === undefined) ? this._numPages - 1 : n;
+                var last = (n === this._numPages - 1);
+                if (last) this._checkPages();
+                
+                element = Ojay(element).setStyle({margin: '0 0 0 0'});
+                var page = this._elements._pages[last ? this._numPages - 1 : n];
+                
+                page.insert(element, 'bottom');
+                this.notifyObservers('itemadd');
+                
+                var items = this._elements._items;
+                if (last) [].push.call(items, element.node);
+                
                 return this;
+            },
+            
+            /**
+             * <p>Removes the final item from the final page of the <tt>Paginator</tt>. If
+             * the final page subsequently contains no items, it is removed and a
+             * <tt>pagedestroy</tt> event is fired. The <tt>n</tt> parameter is for internal
+             * use only, for when items need to be moved across page boundaries by
+             * <tt>shift</tt>/<tt>unshift</tt> operations.</p>
+             * @param {Number} n
+             * @returns {DomCollection}
+             */
+            pop: function(n) {
+                n = (n === undefined) ? this._numPages - 1 : n;
+                var last = (n === this._numPages - 1);
+                
+                var page = this._elements._pages[n],
+                    item = Ojay(page.children().toArray().pop());
+                
+                this.notifyObservers('itemremove');
+                if (!last) return item.remove();
+                
+                this._elements._items = this._elements._items.filter(function(member) {
+                    return member.node !== item.node;
+                });
+                if (last) this._checkPages();
+                
+                return item.remove();
+            },
+            
+            /**
+             * <p>Removes the first item from the first page of the <tt>Paginator</tt>. If
+             * the final page subsequently contains no items, it is removed and a
+             * <tt>pagedestroy</tt> event is fired. The <tt>n</tt> parameter is for internal
+             * use only, for when items need to be moved across page boundaries by
+             * <tt>shift</tt>/<tt>unshift</tt> operations.</p>
+             * @param {Number} n
+             * @returns {DomCollection}
+             */
+            shift: function(n) {
+                n = (n === undefined) ? 0 : n;
+                var first = (n === 0);
+                var page = this._elements._pages[n],
+                    item = page.children().at(0);
+                
+                this.notifyObservers('itemremove');
+                if (!first) return item.remove();
+                
+                for (var i = 1; i < this._numPages; i++)
+                    this.push(this.shift(i), i-1);
+                
+                this._elements._items = this._elements._items.filter(function(member) {
+                    return member.node !== item.node;
+                });
+                this._checkPages();
+                
+                return item.remove();
+            },
+            
+            /**
+             * <p>Pushes a new element onto the start of the list of elements contained in the
+             * <tt>Paginator</tt>, creating a new page and firing the <tt>pagecreate</tt>
+             * event if necessary. The <tt>n</tt> parameter is for internal use only, for when
+             * items need to be moved across page boundaries by <tt>shift</tt>/<tt>unshift</tt>
+             * operations.</p>
+             * @param {HTMLElement} element
+             * @param {Number} n
+             * @returns {Paginator}
+             */
+            unshift: function(element, n) {
+                if (typeof n == 'object' && n.animate) return this._animatedUnshift(element);
+                
+                n = (n === undefined) ? 0 : n;
+                var first = (n === 0);
+                if (first) this._checkPages();
+                
+                element = Ojay(element).setStyle({margin: '0 0 0 0'});
+                var page = this._elements._pages[n];
+                
+                page.insert(element, 'top');
+                this.notifyObservers('itemadd');
+                if (!first) return this;
+                
+                for (var i = 1; i < this._numPages; i++)
+                    this.unshift(this.pop(i-1), i);
+                
+                var items = this._elements._items;
+                [].unshift.call(items, element.node);
+                
+                return this;
+            },
+            
+            /**
+             * @returns {MethodChain}
+             */
+            _animatedUnshift: function(element) {
+                if ((this._options.direction == 'vertical' && this._itemsPerRow > 1) ||
+                    (this._options.direction == 'horizontal' && this._itemsPerCol > 1))
+                    throw new Error('Cannot perform animated push/unshift ' +
+                                    'onto a Paginator with more than one ' +
+                                    'column and row');
+                
+                var item = Ojay(element).setStyle({opacity: 0});
+                
+                var current = this.getCurrentOffset(),
+                    
+                    nItems  = (this._options.direction == 'vertical') ?
+                              this._itemsPerCol : this._itemsPerRow,
+                    
+                    offset  = current - this.getTotalOffset() /
+                              (nItems * (this.getPages() - 1));
+                
+                return this.setScroll(offset, {animate: true, _scrollTime: this._options.pushSlide})
+                     .unshift(item)
+                     .setScroll(current)
+                     ._(item).animate({opacity: {to: 1}}, this._options.pushFade)
+                     ._(this);
+            },
+            
+            /**
+             * <p>Used by the <tt>push</tt>, <tt>pop</tt>, <tt>shift</tt> and <tt>unshift</tt>
+             * operations to decide whether pages need to be created or destroyed.</p>
+             */
+            _checkPages: function() {
+                var items   = this._elements._items.length,
+                    pages   = this._numPages,
+                    perPage = this._itemsPerPage,
+                    total   = pages * perPage;
+                
+                if (items == total) this._createPage();
+                if (items == total - perPage) this._destroyPage();
+            },
+            
+            /**
+             * <p>Adds a new page at the end of the <tt>Paginator</tt>, firing the
+             * <tt>pagecreate</tt> and <tt>scroll</tt> events.</p>
+             */
+            _createPage: function() {
+                var region = this.getRegion(),
+                    page = this.klass.makePageElement(region.getWidth(), region.getHeight());
+                this._elements._subject.insert(page, 'bottom');
+                this._elements._pages.push(page);
+                
+                this._numPages += 1;
+                var offset = (this._currentPage - 1) / (this._numPages - 1);
+                this.notifyObservers('pagecreate');
+                this.notifyObservers('scroll', offset, this.getTotalOffset());
+            },
+            
+            /**
+             * <p>Removes the final page of the <tt>Paginator</tt>, firing the
+             * <tt>pagedestroy</tt>, <tt>scroll</tt> and (if needed) the
+             * <tt>pagechange</tt> events.
+             */
+            _destroyPage: function() {
+                this._elements._pages.pop().remove();
+                if (this._currentPage == this._numPages) {
+                    this._currentPage -= 1;
+                    this.notifyObservers('pagechange', this._currentPage);
+                }
+                this._numPages -= 1;
+                var offset = (this._currentPage - 1) / (this._numPages - 1);
+                if (offset == 1) this.setScroll(1, {animate: true, silent: true});
+                this.notifyObservers('pagedestroy');
+                this.notifyObservers('scroll', offset, this.getTotalOffset());
             }
         },
         
         SCROLLING: {}
     }
 });
+
 
 /**
  * <p>The <tt>AjaxPaginator</tt> class extends the <tt>Paginator</tt> with functionality that
@@ -7033,7 +8971,7 @@ Ojay.Paginator = new JS.Class(/** @scope Ojay.Paginator.prototype */{
  * @constructor
  * @class AjaxPaginator
  */
-Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.prototype */{
+Ojay.AjaxPaginator = new JS.Class('Ojay.AjaxPaginator', Ojay.Paginator, /** @scope Ojay.AjaxPaginator.prototype */{
     /**
      * <p><tt>AjaxPaginator</tt> takes the same initialization data as <tt>Paginator</tt>, but
      * with one extra required option: <tt>urls</tt>. This should be an array of URLs that
@@ -7107,7 +9045,12 @@ Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.
              * @param {Number} page
              */
             _handleSetPage: function(page) {
+                var n = this._options.urls.length;
+                if (page > n) page -= n;
+                if (page < 1) page += n;
+                
                 if (this.pageLoaded(page)) return this.callSuper();
+                
                 var _super = this.method('callSuper');
                 this.setState('REQUESTING');
                 this.loadPage(page, function() {
@@ -7121,6 +9064,7 @@ Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.
     }
 });
 
+
 /**
  * <p>The <tt>Paginator.Controls</tt> class implements a default UI for <tt>Paginator</tt>
  * instances, which includes previous/next links, individual page links, and event listeners
@@ -7130,7 +9074,7 @@ Ojay.AjaxPaginator = new JS.Class(Ojay.Paginator, /** @scope Ojay.AjaxPaginator.
  * @class Paginator.Controls
  */
 Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
-    Controls: new JS.Class(/** @scope Ojay.Paginator.Controls.prototype */{
+    Controls: new JS.Class('Ojay.Paginator.Controls', /** @scope Ojay.Paginator.Controls.prototype */{
         extend: /** @scope Ojay.Paginator.Controls */{
             CONTAINER_CLASS:    'paginator-controls',
             PREVIOUS_CLASS:     'previous',
@@ -7146,6 +9090,8 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
         initialize: function(paginator) {
             this._paginator = paginator;
             this._elements = {};
+            this._paginator.on('pagecreate')._(this)._addPage();
+            this._paginator.on('pagedestroy')._(this)._removePage();
         },
         
         /**
@@ -7158,21 +9104,30 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
             if (this._paginator.inState('CREATED')) return null;
             var elements = this._elements, klass = this.klass, paginator = this._paginator;
             if (elements._container) return elements._container;
+            var self = this;
             
-            elements._container = Ojay( Ojay.HTML.div({className: klass.CONTAINER_CLASS}, function(HTML) {
+            elements._container = Ojay( Ojay.HTML.div(
+                {className: klass.CONTAINER_CLASS}, function(HTML) {
+            
                 // Previous button - decrements page
-                elements._previous = Ojay( HTML.div({className: klass.PREVIOUS_CLASS}, 'Previous') );
+                elements._previous = Ojay( HTML.div(
+                        {className: klass.PREVIOUS_CLASS},
+                        'Previous') );
+                
                 // Page buttons - skip to individual pages
-                elements._pageLinks = Ojay( HTML.div({className: klass.PAGE_LINKS_CLASS}, function(HTML) {
+                elements._pageLinks = Ojay( HTML.div(
+                    {className: klass.PAGE_LINKS_CLASS}, function(HTML) {
                     elements._pages = [];
                     paginator.getPages().times(function(page) {
-                        var span = elements._pages[page] = Ojay( HTML.span(String(page + 1)) );
-                        span.on('mouseover').addClass('hovered');
-                        span.on('mouseout').removeClass('hovered');
+                        var span = elements._pages[page] = self._makeLink(page+1);
+                        HTML.concat(span.node);
                     });
                 }) );
+                
                 // Next button - increments page
-                elements._next = Ojay( HTML.div({className: klass.NEXT_CLASS}, 'Next') );
+                elements._next = Ojay( HTML.div(
+                        {className: klass.NEXT_CLASS},
+                        'Next') );
             }) );
             
             elements._previous.on('click')._(paginator).decrementPage();
@@ -7199,13 +9154,50 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
             this._highlightPage(page);
             
             // Disable previous and next buttons at the ends of the run
-            paginator.on('firstpage')._(elements._previous).addClass('disabled');
-            paginator.on('lastpage')._(elements._next).addClass('disabled');
-            if (page == 1) elements._previous.addClass('disabled');
-            if (page == paginator.getPages()) elements._next.addClass('disabled');
+            if (!paginator.isLooped()) {
+                paginator.on('firstpage')._(elements._previous).addClass('disabled');
+                paginator.on('lastpage')._(elements._next).addClass('disabled');
+                if (page == 1) elements._previous.addClass('disabled');
+                if (page == paginator.getPages()) elements._next.addClass('disabled');
+            }
             
             elements._container.addClass(paginator.getDirection());
             return elements._container;
+        },
+        
+        /**
+         * <p>Creates and returns an element to use as a numbered page link.</p>
+         * @param {Number} page
+         * @returns {DomCollection}
+         */
+        _makeLink: function(page) {
+            var link = Ojay( Ojay.HTML.span(String(page)) );
+            link.on('mouseover').addClass('hovered');
+            link.on('mouseout').removeClass('hovered');
+            return link;
+        },
+        
+        /**
+         * <p>Responds to the <tt>pagecreate</tt> event on the associated <tt>Paginator</tt>
+         * instance by adding a new page link to the list.</p>
+         */
+        _addPage: function() {
+            var link = this._makeLink(this._paginator.getPages());
+            this._elements._pages.push(link);
+            this._elements._pageLinks.insert(link, 'bottom');
+            this._elements._next.removeClass('disabled');
+        },
+        
+        /**
+         * <p>Responds to the <tt>pagedestroy</tt> event on the associated <tt>Paginator</tt>
+         * instance removing the final page link from the list.</p>
+         */
+        _removePage: function() {
+            this._elements._pages.pop().remove();
+            var pager = this._paginator;
+            if (pager.isLooped()) return;
+            if (pager.getCurrentPage() == pager.getPages())
+                this._elements._next.addClass('disabled');
         },
         
         /**
@@ -7244,4 +9236,428 @@ Ojay.Paginator.extend(/** @scope Ojay.Paginator */{
             return this._elements._pageLinks;
         }
     })
+});
+
+
+/**
+ * <p>The <tt>Tabs</tt> class is used to convert a list of document sections into a tabbed
+ * interface. Each section should contain a heading or similar common element whose content
+ * will be used as the text label for each tab.</p>
+ *
+ * <p>For example, the following starting markup:</p>
+ *
+ * <pre><code>    <div id="tabGroup">
+ *         <div class="tab">
+ *             <h3 class="toggle">J.G. Ballard</h3>
+ *             <p>I believe in the power of the imagination to remake the
+ *             world, to release the truth within us, to hold back the night...</p>
+ *         </div>
+ *         <div class="tab">
+ *             <h3 class="toggle">Andrei Tarkovsky</h3>
+ *             <p><q>We do not move in one direction, rather do we wander back and
+ *             forth, turning now this way and now that. We go back on our own...</p>
+ *         </div>
+ *         <div class="tab">
+ *             <h3 class="toggle">Philip K. Dick</h3>
+ *             <p>I ask in my writing, What is real? Because unceasingly we
+ *             are bombarded with pseudo-realities manufactured...</p>
+ *         </div>
+ *     </div></code></pre>
+ *
+ * <p>and the following script snippet:</p>
+ *
+ * <pre><code>    var tabs = Ojay.Tabs('#tabGroup .tab');
+ *     tabs.setup();</code></pre>
+ *
+ * <p>the markup is transformed into:</p>
+ *
+ * <pre><code>    <ul class="toggles">
+ *         <li class="toggle-1 first">J.G. Ballard</li>
+ *         <li class="toggle-2">Andrei Tarkovsky</li>
+ *         <li class="toggle-3 last">Philip K. Dick</li>
+ *     </ul>
+ *     <div id="tabGroup">
+ *         <div class="tab">
+ *             <p>I believe in the power of the imagination to remake the
+ *             world, to release the truth within us, to hold back the night...</p>
+ *         </div>
+ *         <div class="tab">
+ *             <p><q>We do not move in one direction, rather do we wander back and
+ *             forth, turning now this way and now that. We go back on our own...</p>
+ *         </div>
+ *         <div class="tab">
+ *             <p>I ask in my writing, What is real? Because unceasingly we
+ *             are bombarded with pseudo-realities manufactured...</p>
+ *         </div>
+ *     </div></code></pre>
+ *
+ * @constructor
+ * @class Tabs
+ */
+Ojay.Tabs = new JS.Class('Ojay.Tabs', /** @scope Ojay.Tabs.prototype */{
+    include: [Ojay.Observable, JS.State],
+      
+    /**
+     * <p>To initialize, <tt>Tabs</tt> requires a CSS selector to get the list of page
+     * sections to convert to tabs, and optionally an options object. Available options
+     * are:</p>
+     *
+     * <ul>
+     *     <li><tt>toggleSelector</tt> - CSS selector used to get toggle elements
+     *     <li><tt>togglesClass</tt> - class name added to the generated list of toggles
+     *     <li><tt>togglesPosition</tt> - 'before' or 'after', position to insert toggles list
+     *     <li><tt>switchTime</tt> - duration of tab switch animation in seconds
+     * </ul>
+     *
+     * @param {String} tabs
+     * @param {Object} options
+     */
+    initialize: function(tabs, options) {
+        this._tabGroup = tabs;
+        options  = options || {};
+        
+        options.toggleSelector  = options.toggleSelector  || this.klass.TOGGLE_SELECTOR;
+        options.togglesClass    = options.togglesClass    || this.klass.TOGGLES_CLASS;
+        options.switchTime      = options.switchTime      || this.klass.SWITCH_TIME;
+        options.togglesPosition = options.togglesPosition || this.klass.INSERT_POSITION;
+        this._options = options;
+        
+        this.setState('CREATED');
+    },
+    
+    /**
+     * @returns {Object}
+     */
+    getInitialState: function() {
+        return {tab: 1};
+    },
+    
+    /**
+     * @param {Object} state
+     * @param {Object} options
+     * @returns {Tabs}
+     */
+    changeState: function(state, options) {
+        if (state.tab !== undefined) this._handleSetPage(state.tab, options);
+        return this;
+    },
+    
+    states: {
+        /**
+         * <p>The <tt>Tabs</tt> instance is in the CREATED state until its <tt>setup()</tt>
+         * method is called.</p>
+         */
+        CREATED: /** @scope Ojay.Tabs.prototype */{
+            /**
+             * <p>Sets up all the DOM changes the <tt>Tabs</tt> object needs. If you want to history
+             * manage the object, make sure you set up history management before calling this method.
+             * Moves the object to the READY state if successful.</p>
+             * @returns {Tabs}
+             */
+            setup: function() {
+                this._tabGroup  = Ojay(this._tabGroup);
+                this._container = this._tabGroup.parents().at(0);
+                
+                this._makeToggles();
+                this._makeViews();
+                this._restoreState();
+                
+                return this;
+            },
+            
+            /**
+             * <p>Insert the toggle control group before or after the tabs' containing
+             * element.</p>
+             */
+            _makeToggles: function() {
+                this._toggles = [];
+                var self = this, options = self._options;
+                
+                var toggles = Ojay( Ojay.HTML.ul({className: options.togglesClass}, function (HTML) {
+                    self._tabGroup.children(options.toggleSelector).forEach(function(header, i) {
+                        var toggle = Ojay( HTML.li() ).addClass('toggle-' + (i+1));
+                        toggle.setContent(header.node.innerHTML);
+                        if (i === 0) toggle.addClass('first');
+                        if (i === self._tabGroup.length - 1) toggle.addClass('last');
+                        self._toggles.push(toggle);
+                        header.remove();
+                        toggle.on('click')._(self).setPage(i+1);
+                    });
+                }) );
+                
+                if (typeof this._options.width != 'undefined')
+                    toggles.setStyle({width: this._options.width});
+                
+                this._tabGroup.parents().at(0).insert(toggles, this._options.togglesPosition);
+            },
+            
+            _makeViews: function() {
+                var self = this, options = self._options;
+                
+                this._tabs = this._tabGroup.map(function(container) {
+                    return new this.klass.Tab(this, container);
+                }, this);
+                
+                if (options.width && options.height)
+                    this._container.setStyle({height: options.height});
+            },
+            
+            _restoreState: function() {
+                this.setState('READY');
+                var state = this.getInitialState();
+                this._handleSetPage(state.tab);
+                
+                this.on('pagechange', function(tabs, page) {
+                    tabs._highlightToggle(page - 1);
+                });
+            }
+        },
+        
+        /**
+         * <p>The <tt>Tabs</tt> object is in the READY state when all its DOM behaviour has been
+         * set up and it is not in the process of switching tabs.</p>
+         */
+        READY: /** @scope Ojay.Tabs.prototype */{
+            /**
+             * <p>Switches the set of tabs to the given page (indexed from 1), inserting
+             * history entry. Passing in the <tt>silent</tt> option will stop the
+             * <tt>pagechange</tt> event from being published.</p>
+             * @param {Number} page
+             * @param {Object} options
+             * @returns {Tabs}
+             */
+            setPage: function(page, options) {
+                this.changeState({tab: page}, options);
+                return this;
+            },
+            
+            /**
+             * <p>Switch to the tab with the index provided as the first argument.</p>
+             * @param {Number} index
+             * @param {Object} options
+             */
+            _handleSetPage: function(index, options) {
+                index -= 1;
+                
+                if (index >= this._tabs.length) index = 0;
+                if (this._currentTab == index) return;
+                
+                if ((options || {}).silent !== false) this.notifyObservers('pagechange', index+1);
+                
+                if (typeof this._currentTab == 'undefined') {
+                    this._currentTab = index;
+                    this._tabs[index].show();
+                    this._highlightToggle(index);
+                } else {
+                    this.setState('ANIMATING');
+                    this._tabs[this._currentTab].hide()._(function(self) {
+                        self._currentTab = index;
+                        self._tabs[index].show()
+                        ._(self).setState('READY');
+                    }, this);
+                }
+            },
+            
+            /**
+             * <p>Sets the 'selected' class on the appropriate toggle.</p>
+             * @param {Number} index
+             */
+            _highlightToggle: function(index) {
+                this._toggles.forEach({removeClass: 'selected'});
+                this._toggles[index].addClass('selected');
+            }
+        },
+        
+        /**
+         * <p>The <tt>Tabs</tt> instance is in the ANIMATING state during tab transitions.</p>
+         */
+        ANIMATING: /** @scope Ojay.Tabs.prototype */{}
+    },
+    
+    extend: /** @scope Ojay.Tabs */{
+        TOGGLE_SELECTOR:  '.toggle',
+        TOGGLES_CLASS:    'toggles',
+        SWITCH_TIME:      0.2,
+        INSERT_POSITION:  'before',
+        
+        /**
+         * @constructor
+         * @class Tab
+         */
+        Tab: new JS.Class('Ojay.Tabs.Tab', /** @scope Ojay.Tabs.Tab.prototype */{
+            /**
+             * @param {Ojay.Tab} group
+             * @param {HTMLElement} container
+             */
+            initialize: function(group, container) {
+                this._container = container, this._group = group;
+                
+                this._container.hide().setStyle({opacity: 0});
+                
+                if (this._group._options.height)
+                    this._container.setStyle({position: 'absolute', top: 0, left: 0});
+            },
+            
+            /**
+             * @returns {JS.MethodChain}
+             */
+            hide: function() {
+                return this._container.animate({opacity: {to: 0}},
+                        this._group._options.switchTime)
+                        .hide()
+                        ._(this);
+            },
+            
+            /**
+             * @returns {JS.MethodChain}
+             */
+            show: function() {
+                return this._container.show().animate({opacity: {to: 1}},
+                        this._group._options.switchTime)
+                        ._(this);
+            }
+        })
+    }
+});
+
+
+/**
+ * @class AjaxTabs
+ * @constructor
+ */
+Ojay.AjaxTabs = new JS.Class('Ojay.AjaxTabs', Ojay.Tabs, /** @scope Ojay.AjaxTabs.prototype */{
+    
+    /**
+     * <p><tt>AjaxTabs</tt> takes slightly different initialization data to <tt>Tabs</tt>.
+     * This class requires two compulsory arguments. The first is a list of link elements
+     * (or a CSS selector for same); these links will become the toggles for the tab group.
+     * The second is an element into which to insert the content retrieved by the Ajax
+     * requests.</p>
+     * @param {String|DomCollection} links
+     * @param {String|DomCollection} container
+     * @param {Object} options
+     */
+    initialize: function(links, container, options) {
+        this.callSuper(links, options);
+        this._container = container;
+    },
+    
+    /**
+     * <p>Returns <tt>true</tt> iff the given page is already loaded.</p>
+     * @param {Number} index
+     * @returns {Boolean}
+     */
+    pageLoaded: function(index) {
+        return !!this._loaded[index - 1];
+    },
+    
+    /**
+     * <p>Tells the <tt>AjaxTabs</tt> to load the content for the given page, if
+     * the content is not already loaded. Fires <tt>pagerequest</tt> and
+     * <tt>pageload</tt> events.</p>
+     * @param {Number} page
+     * @param {Function} callback
+     * @param {Object} scope
+     * @returns {AjaxTabs}
+     */
+    loadPage: function(page, callback, scope) {
+        if (this.pageLoaded(page) || this.inState('CREATED')) return this;
+        var url = this._links[page - 1].href, self = this;
+        this.notifyObservers('pagerequest', url);
+        Ojay.HTTP.GET(url, {}, {
+            onSuccess: function(response) {
+                response.insertInto(self._tabGroup[page - 1]);
+                self._loaded[page - 1] = true;
+                self.notifyObservers('pageload', url, response);
+                if (typeof callback == 'function') callback.call(scope || null);
+            }
+        });
+        return this;
+    },
+    
+    states: {
+        CREATED: {
+            /**
+             * <p>Sets up all the DOM changes the <tt>Tabs</tt> object needs. If you want to history
+             * manage the object, make sure you set up history management before calling this method.
+             * Moves the object to the READY state if successful.</p>
+             * @returns {Tabs}
+             */
+            setup: function() {
+                this._links = Ojay(this._tabGroup);
+                this._loaded = this._links.map(function() { return false; });
+                this._container = Ojay(this._container);
+                
+                this._makeToggles();
+                this._makeViews();
+                this._restoreState();
+                
+                return this;
+            },
+            
+            /**
+             * <p>Sets up the links as toggles to control tab visibility.</p>
+             */
+            _makeToggles: function() {
+                this._toggles = [];
+                this._links.forEach(function(link, i) {
+                    link.addClass('toggle-' + (i+1));
+                    if (i === 0) link.addClass('first');
+                    if (i === this._links.length - 1) link.addClass('last');
+                    this._toggles.push(link);
+                    link.on('click', Ojay.stopDefault)._(this).setPage(i+1);
+                }, this);
+            },
+            
+            /**
+             * <p>Generates a set of elements to hold the content retrieved over Ajax
+             * when the links are clicked.</p>
+             */
+            _makeViews: function() {
+                this._container.setContent('');
+                this._links.forEach(function(link, i) {
+                    var div = Ojay.HTML.div({className: this.klass.TAB_CLASS});
+                    this._container.insert(div);
+                }, this);
+                this._tabGroup = this._container.children();
+                this.callSuper();
+            }
+        },
+        
+        READY: {
+            /**
+             * <p>Handles request to <tt>changeState()</tt>.</p>
+             * @param {Number} page
+             */
+            _handleSetPage: function(index) {
+                if (this.pageLoaded(index)) return this.callSuper();
+                
+                var _super = this.method('callSuper');
+                this.setState('REQUESTING');
+                this.loadPage(index, function() {
+                    this.setState('READY');
+                    _super();
+                }, this);
+            }
+        },
+        
+        REQUESTING: {}
+    },
+    
+    extend: /** @scope Ojay.AjaxTabs */{
+        TAB_CLASS:    'tab',
+        
+        /**
+         * <p>There's a pretty good chance of there being several good ways of instantiating
+         * one of these, so for now let's encourage the default way to be used through a
+         * factory method.</p>
+         * @param {String|DomCollection} links
+         * @param {String|DomCollection} container
+         * @param {Object} options
+         * @returns {AjaxTabs}
+         */
+        fromLinks: function(links, container, options) {
+            return new this(links, container, options);
+        }
+    }
 });

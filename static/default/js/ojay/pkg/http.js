@@ -1,8 +1,10 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require ojay/core-min
+
 /**
  * @overview
  * <p><tt>Ojay.HTTP</tt> wraps the <tt>YAHOO.util.Connect</tt> module to provide a more succinct
@@ -43,7 +45,7 @@ Licensed under the BSD license, http://ojay.othermedia.org/license.html
  * the response and inserting it into the document. Its methods are listed below. You can use the
  * <tt>response</tt> methods to chain after HTTP calls for more sentence-like code:</p>
  *
- * <pre><code>    Ojay.HTTP.GET('/index.html').insertInto('#container').evalScriptTags();</pre></code>
+ * <pre><code>    Ojay.HTTP.GET('/index.html').insertInto('#container').evalScripts();</pre></code>
  *
  * <p>It's best to use this chaining for really simple stuff -- just remember the chain is called
  * asynchronously after the HTTP request completes, so any code following a chain like this should
@@ -73,7 +75,7 @@ Licensed under the BSD license, http://ojay.othermedia.org/license.html
  * the POST request is made, it will be executed and the return value will be sent to the server
  * in the <tt>width</tt> parameter.</p>
  */
-Ojay.HTTP = new JS.Singleton(/** @scope Ojay.HTTP */{
+Ojay.HTTP = new JS.Singleton('Ojay.HTTP', /** @scope Ojay.HTTP */{
     include: Ojay.Observable,
     
     /**
@@ -107,12 +109,13 @@ Ojay.HTTP.VERBS.forEach(function(verb) {
  * @constructor
  * @class HTTP.Request
  */
-Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
+Ojay.HTTP.Request = new JS.Class('Ojay.HTTP.Request', /** @scope Ojay.HTTP.Request.prototype */{
     
     /**
      * @param {String} verb         One of 'GET', 'POST', 'PUT', 'DELETE', or 'HEAD'
      * @param {String} url          The URL to request
-     * @param {Object} parameters   Key-value pairs to be used as a query string or POST message
+     * @param {Object} parameters   Key-value pairs to be used as a query string or POST message;
+     *                              alternatively, a string to be used as a POST request body.
      * @param {Object} callbacks    Object containing callback functions
      */
     initialize: function(verb, url, parameters, callbacks) {
@@ -120,6 +123,7 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
         if (Ojay.HTTP.VERBS.indexOf(this.verb) == -1) return;
         this._url           = url;
         this._parameters    = parameters || {};
+        if (typeof callbacks != 'object') callbacks = {onSuccess: callbacks};
         this._callbacks     = callbacks || {};
         this.chain          = new JS.MethodChain();
     },
@@ -129,16 +133,19 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
      */
     getURI: function() {
         if (this.uri) return this.uri;
-        return this.uri = Ojay.URI.build(this._url, this._parameters);
+        var params = (typeof this._parameters == 'string') ? {} : this._parameters;
+        return this.uri = Ojay.URI.build(this._url, params);
     },
     
     /**
      * <p>Makes the HTTP request and sets up all the callbacks.</p>
      */
     _begin: function() {
-        var uri         = this.getURI();
-        var url         = (this.verb == 'POST') ? uri._getPathWithHost() : uri.toString();
-        var postData    = (this.verb == 'POST') ? uri.getQueryString() : undefined;
+        var post        = (this.verb == 'POST'),
+            uri         = this.getURI(),
+            url         = post ? uri._getPathWithHost() : uri.toString(),
+            postData    = post ? this._getPostData(uri) : undefined;
+        
         Ojay.HTTP.notifyObservers('request', {receiver: this});
         
         YAHOO.util.Connect.asyncRequest(this.verb, url, {
@@ -174,6 +181,16 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
             }
             
         }, postData);
+    },
+    
+    /**
+     * @param {URI} uri
+     * @returns {String}
+     */
+    _getPostData: function(uri) {
+        return (typeof this._parameters == 'string')
+                ? this._parameters
+                : uri.getQueryString();
     }
 });
 
@@ -187,7 +204,7 @@ Ojay.HTTP.Request = new JS.Class(/** @scope Ojay.HTTP.Request.prototype */{
  * @constructor
  * @class HTTP.Response
  */
-Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
+Ojay.HTTP.Response = new JS.Class('Ojay.HTTP.Response', /** @scope Ojay.HTTP.Response.prototype */{
     
     /**
      * @param {HTTP.Request} request an HTTP.Request object
@@ -231,15 +248,9 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
      */
     parseJSON: function() {
         return (this.responseText || '').parseJSON();
-    },
-    
-    /**
-     * @returns {HTTP.Response}
-     */
-    evalScriptTags: function() {
-        return this.evalScripts();
-    }.traced('evalScriptTags() is deprecated. Use evalScripts() instead.', 'warn')
+    }
 });
+
 
 (function() {
     
@@ -251,11 +262,27 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
         CSS:    /\.css$/i
     };
     
-    var IFRAME_NAME = '__ojay_cross_domain__';
+    var IFRAME_NAME        = '__ojay_cross_domain__',
+        JSONP_HANDLER_NAME = '__ojay_jsonp_handler__',
+        HANDLER_COUNT      = 0;
     
     var createIframe = function() {
         Ojay(document.body).insert('<iframe name="' + IFRAME_NAME + '" style="display: none;"></iframe>', 'top');
     }.runs(1);
+    
+    var getHandlerId = function() {
+        return JSONP_HANDLER_NAME + (HANDLER_COUNT++);
+    };
+    
+    var handleJsonP = function(callback, data) {
+        var args = Array.from(arguments), callback = args.shift();
+        callback.apply(null, args);
+    };
+    
+    var removeHandler = function(id) {
+        window[id] = null;
+        try { delete window[id] } catch (e) {}
+    }.curry();
     
     var determineAssetType = function(url) {
         switch (true) {
@@ -336,10 +363,22 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
          * @param {Object} callbacks    Object containing callback functions
          */
         load: function(url, parameters, callbacks) {
-            var path = Ojay.URI.parse(url).path,
-                assetType = determineAssetType(path);
+            var path      = Ojay.URI.parse(url).path,
+                assetType = determineAssetType(path),
+                uri       = Ojay.URI.build(url, parameters),
+                callbacks = callbacks || {};
             
-            YAHOO.util.Get[assetType](Ojay.URI.build(url, parameters).toString(), callbacks || {});
+            if (typeof callbacks == 'function') callbacks = {onSuccess: callbacks};
+            
+            if (uri.params.jsonp && callbacks.onSuccess) {
+                var handlerID = getHandlerId();
+                uri.setParam(uri.params.jsonp, handlerID);
+                if (uri.params.jsonp !== 'jsonp') delete uri.params.jsonp;
+                window[handlerID] = handleJsonP.partial(callbacks.onSuccess);
+                callbacks.onSuccess = removeHandler(handlerID);
+            }
+            
+            YAHOO.util.Get[assetType](uri.toString(), callbacks);
         },
         
         /**
@@ -387,11 +426,12 @@ Ojay.HTTP.Response = new JS.Class(/** @scope Ojay.HTTP.Response.prototype */{
     JS.MethodChain.addMethods(HTTP);
 })();
 
+
 /**
  * @constructor
  * @class URI
  */
-Ojay.URI = new JS.Class({
+Ojay.URI = new JS.Class('Ojay.URI', {
     extend: {
         /**
          * @param {String} string
@@ -425,7 +465,7 @@ Ojay.URI = new JS.Class({
             
             if (/^\?/.test(string)) string.slice(1).split('&').forEach(function(pair) {
                 var bits = pair.split('=');
-                uri.setParam(bits[0], bits[1]);
+                uri.setParam(bits[0], bits[1].replace('+', ' '));
             });
             return uri;
         },
@@ -477,7 +517,7 @@ Ojay.URI = new JS.Class({
         var string = this._getPathWithHost(), params = [];
         var queryString = this.getQueryString();
         if (queryString.length) string += '?' + queryString;
-        if (this.hash) string += '#' + this.hash;
+        if (typeof this.hash === 'string') string += '#' + this.hash;
         return string;
     },
     

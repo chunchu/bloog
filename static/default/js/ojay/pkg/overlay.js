@@ -1,8 +1,10 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require ojay/core-min
+
 (function(Ojay) {
 /**
  * <p>Returns a function that performs the given method while an overlay is hidden. Use
@@ -89,7 +91,7 @@ var whileHidden = function(method) {
  * @constructor
  * @class Overlay
  */
-Ojay.Overlay = new JS.Class(/** @scope Ojay.Overlay.prototype */{
+Ojay.Overlay = new JS.Class('Ojay.Overlay', /** @scope Ojay.Overlay.prototype */{
     include: [JS.State, Ojay.Observable],
     
     extend: /** @scope Ojay.Overlay */{
@@ -131,7 +133,7 @@ Ojay.Overlay = new JS.Class(/** @scope Ojay.Overlay.prototype */{
          *
          * @class Overlay.Transitions
          */
-        Transitions: new JS.Singleton(/** @scope Ojay.Overlay.Transitions */{
+        Transitions: new JS.Singleton('Ojay.Overlay.Transitions', /** @scope Ojay.Overlay.Transitions */{
             _store: {},
             
             /**
@@ -523,6 +525,7 @@ Ojay.Overlay = new JS.Class(/** @scope Ojay.Overlay.prototype */{
     }
 });
 
+
 /**
  * @overview
  * <p>This file defines a set of transition effects for hiding and showing overlay elements.
@@ -603,6 +606,7 @@ Ojay.Overlay.Transitions
     }
 });
 
+
 /**
  * <p>The <tt>ContentOverlay</tt> class extends <tt>Overlay</tt> and provides the most generally
  * useful form of overlay. Much of its API it inherits from <tt>Overlay</tt>, but it provides a
@@ -618,7 +622,7 @@ Ojay.Overlay.Transitions
  * @constructor
  * @class ContentOverlay
  */
-Ojay.ContentOverlay = new JS.Class(Ojay.Overlay, /** @scope Ojay.ContentOverlay.prototype */{
+Ojay.ContentOverlay = new JS.Class('Ojay.ContentOverlay', Ojay.Overlay, /** @scope Ojay.ContentOverlay.prototype */{
     extend: /** @scope Ojay.ContentOverlay */{
         CONTENT_CLASS:      'overlay-content'
     },
@@ -699,13 +703,26 @@ Ojay.ContentOverlay = new JS.Class(Ojay.Overlay, /** @scope Ojay.ContentOverlay.
         VISIBLE: /** @scope Ojay.ContentOverlay.prototype */{
             /**
              * <p>Sets the size of the overlay to just contain its content.</p>
+             * @param {Object} options
              * @returns {ContentOverlay}
              */
-            fitToContent: function() {
-                var region = this._elements._content.getRegion();
-                return this.setSize(region.getWidth(), region.getHeight());
+            fitToContent: function(options) {
+                var options     = options || {},
+                    animate     = !!options.animate,
+                    balance     = !!options.balance,
+                    innerRegion = this._elements._content.getRegion(),
+                    outerRegion = this.getRegion();
+                
+                if (balance) innerRegion.centerOn(outerRegion);
+                
+                if (animate) return this.resize(innerRegion, options);
+                
+                this.setSize(innerRegion.getWidth(), innerRegion.getHeight());
+                this.setPosition(innerRegion.left, innerRegion.top);
+                return this;
     }   }   }
 });
+
 
 /**
  * <p><tt>Tooltip</tt> is a subclass of <tt>ContentOverlay</tt> that provides overlays that
@@ -714,7 +731,7 @@ Ojay.ContentOverlay = new JS.Class(Ojay.Overlay, /** @scope Ojay.ContentOverlay.
  * @constructor
  * @class Tooltip
  */
-Ojay.Tooltip = new JS.Class(Ojay.ContentOverlay, /** @scope Ojay.Tooltip.prototype */{
+Ojay.Tooltip = new JS.Class('Ojay.Tooltip', Ojay.ContentOverlay, /** @scope Ojay.Tooltip.prototype */{
     /**
      * <p>Initializes the tooltip. The constructor differs from that of its parent classes
      * in that you must pass in the text for the tooltip as the first argument, followed
@@ -757,6 +774,7 @@ Ojay.Tooltip = new JS.Class(Ojay.ContentOverlay, /** @scope Ojay.Tooltip.prototy
 
 Ojay(document).on('mousemove', Ojay.Tooltip.method('update'));
 
+
 /**
  * <p>The <tt>PageMask</tt> class is a subtype of <tt>Overlay</tt> that represents elements used
  * to obscure the rest of the document while an overlay is visible. This allows easy creation of
@@ -766,7 +784,7 @@ Ojay(document).on('mousemove', Ojay.Tooltip.method('update'));
  * @constructor
  * @class PageMask
  */
-Ojay.PageMask = new JS.Class(Ojay.Overlay, /** @scope Ojay.PageMask.prototype */{
+Ojay.PageMask = new JS.Class('Ojay.PageMask', Ojay.Overlay, /** @scope Ojay.PageMask.prototype */{
     extend: /** @scope Ojay.PageMask */{
         DEFAULT_COLOR:  '000000',
         DEFAULT_OPACITY:    0.5,
@@ -852,5 +870,6 @@ Ojay.PageMask = new JS.Class(Ojay.Overlay, /** @scope Ojay.PageMask.prototype */
 
 if (YAHOO.env.ua.ie)
     Ojay(window).on('resize', Ojay.PageMask.method('resizeAll'));
+
 
 })(Ojay);

@@ -1,10 +1,12 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require ojay/core-min
-// @require ojay/pkg/http-min
+
 (function() {
+
 
 JS.extend(Ojay, /** @scope Ojay */ {
     /**
@@ -103,7 +105,7 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
             case element.every({matches: '[type=radio]'}) :
                 selected = element.map('node').filter({value: value})[0];
                 if (!selected) return;
-                element.setAttributes({checked: false});
+                element.set({checked: false});
                 selected.checked = true;
                 break;
             
@@ -113,7 +115,9 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
             
             case element.matches('select') :
                 options = Array.from(element.node.options);
-                selected = options.filter({value: value})[0];
+                selected = options.filter(function(option) {
+                    return (option.value == value) || (option.text == value);
+                })[0];
                 if (!selected) return;
                 options.forEach(function(option) { option.selected = false });
                 selected.selected = true;
@@ -126,6 +130,16 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
                 break;
         }
     }.curry(),
+    
+    /**
+     * <p>Submits the given form, routing the submission through our validdation and
+     * ajax routines.</p>
+     * @param {String|HTMLElement} form
+     */
+    submit: function(form) {
+        form = Ojay(form);
+        getForm(form.node.id)._submit();
+    },
     
     /**
      * <p>Goes through all sets of form rules and makes sure each one is associated with
@@ -153,6 +167,7 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
     }
 });
 
+
 /**
  * <p>The <tt>FormDescription</tt> class encapsulates sets of rules about how a form is to
  * behave. Each instance holds a set of requirements, which are tested against the form's
@@ -162,7 +177,7 @@ JS.extend(Ojay.Forms, /** @scope Ojay.Forms */{
  * @class FormDescription
  * @private
  */
-var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
+var FormDescription = new JS.Class('Ojay.Forms.FormDescription', /** @scope FormDescription.prototype */{
     include: JS.Observable,
     
     /**
@@ -194,8 +209,12 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
         this._names  = {};
         this._form = Ojay.byId(this._formID);
         if (!this._hasForm()) return false;
-        this._form.on('submit', this.method('_handleSubmission'));
         for (var field in this._requirements) this._requirements[field]._attach();
+        
+        this._form.on('submit', function(form, evnt) {
+            if (!this._handleSubmission()) evnt.stopDefault();
+        }, this);
+        
         return true;
     },
     
@@ -205,7 +224,7 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
      * @returns {Boolean}
      */
     _hasForm: function() {
-        return this._form && this._form.matches('body form');
+        return this._form && this._form.ancestors('body').node;
     },
     
     /**
@@ -219,21 +238,27 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
     },
     
     /**
+     * <p>Submits the form, enforcing validation and Ajax rules.</p>
+     */
+    _submit: function() {
+        if (this._handleSubmission()) this._form.node.submit();
+    },
+    
+    /**
      * <p>Processes form submission events by validating the form and stopping the event
      * from proceeding if the form data is found to be invalid.</p>
-     * @param {DomCollection} form
-     * @param {Event} evnt
      */
-    _handleSubmission: function(form, evnt) {
-        var valid = this._isValid();
-        if (this._ajax || !valid) evnt.stopDefault();
-        if (!this._ajax || !valid) return;
+    _handleSubmission: function() {
+        var allowed = true; valid = this._isValid();
+        if (this._ajax || !valid) allowed = false;
+        if (!this._ajax || !valid) return allowed;
         var form = this._form.node;
         Ojay.HTTP[(form.method || 'POST').toUpperCase()](form.action, this._data, {
             onSuccess: function(response) {
                 this._ajaxResponders.forEach({call: [null, response]});
             }.bind(this)
         });
+        return allowed;
     },
     
     /**
@@ -339,6 +364,7 @@ var FormDescription = new JS.Class(/** @scope FormDescription.prototype */{
     }
 });
 
+
 var isPresent = function(value) {
     return !Ojay.isBlank(value) || ['must not be blank'];
 };
@@ -352,7 +378,7 @@ var isPresent = function(value) {
  * @class FormRequirement
  * @private
  */
-var FormRequirement = new JS.Class({
+var FormRequirement = new JS.Class('Ojay.Forms.FormRequirement', {
     /**
      * @param {FormDescription} form
      * @param {String} field
@@ -384,6 +410,7 @@ var FormRequirement = new JS.Class({
      * @returns {Array|Boolean}
      */
     _test: function(value, data) {
+        if (!this._visible()) return true;
         var errors = [], tests = this._tests.length ? this._tests : [isPresent], value = value || '';
         tests.forEach(function(block) {
             var result = block(value, data), message, field;
@@ -393,9 +420,22 @@ var FormRequirement = new JS.Class({
                 this._form._errors.add(field, message);
             }
         }, this);
-        return errors.length ? errors : true;
+    },
+    
+    /**
+     * @returns {Boolean}
+     */
+    _visible: function() {
+        return !!this._elements && this._elements.reduce(function(truth, element) {
+            var node = element.node;
+            do {
+                if (node.parentNode && Ojay(node).getStyle('display') == 'none') return false;
+            } while (node = node.parentNode)
+            return truth;
+        }, true);
     }
 });
+
 
 /**
  * <p>The <tt>FormData</tt> class provides read-only access to data objects for the
@@ -407,7 +447,7 @@ var FormRequirement = new JS.Class({
  * @class FormData
  * @private
  */
-var FormData = new JS.Class(/** @scope FormData.prototype */{
+var FormData = new JS.Class('Ojay.Forms.FormData', /** @scope FormData.prototype */{
     /**
      * @param {Object} data
      */
@@ -418,6 +458,7 @@ var FormData = new JS.Class(/** @scope FormData.prototype */{
     }
 });
 
+
 /**
  * <p>The <tt>FormErrors</tt> class provides append-only access to error lists for the
  * purposes of validation. Validation routines cannot modify existing errors or remove
@@ -426,7 +467,7 @@ var FormData = new JS.Class(/** @scope FormData.prototype */{
  * @class FormErrors
  * @private
  */
-var FormErrors = new JS.Class(/** @scope FormErrors.prototype */{
+var FormErrors = new JS.Class('Ojay.Forms.FormErrors', /** @scope FormErrors.prototype */{
     initialize: function(form) {
         var errors = {}, base = [];
         
@@ -500,6 +541,7 @@ var FormErrors = new JS.Class(/** @scope FormErrors.prototype */{
         };
     }
 });
+
 
 /**
  * @overview
@@ -699,7 +741,7 @@ var DSL = {
  * @class FormDSL
  * @private
  */
-var FormDSL = new JS.Class(/** @scope FormDSL.prototype */{
+var FormDSL = new JS.Class('Ojay.Forms.FormDSL', /** @scope FormDSL.prototype */{
     /**
      * @param {FormDescription} form
      */
@@ -762,7 +804,7 @@ var FormDSLMethods = ['requires', 'expects', 'validates', 'submitsUsingAjax', 'h
  * @class RequirementDSL
  * @private
  */
-var RequirementDSL = new JS.Class(/** @scope RequirementDSL.prototype */{
+var RequirementDSL = new JS.Class('Ojay.Forms.RequirementDSL', /** @scope RequirementDSL.prototype */{
     /**
      * @param {FormRequirement} requirement
      */
@@ -925,7 +967,7 @@ RequirementDSL.include(FormDSLMethods.reduce(function(memo, method) {
  * @class WhenDSL
  * @private
  */
-var WhenDSL = new JS.Class(/** @scope WhenDSL.prototype */{
+var WhenDSL = new JS.Class('Ojay.Forms.WhenDSL', /** @scope WhenDSL.prototype */{
     /**
      * @param {FormDescription} form
      */
@@ -964,7 +1006,7 @@ var WhenDSL = new JS.Class(/** @scope WhenDSL.prototype */{
  * @class BeforeDSL
  * @private
  */
-var BeforeDSL = new JS.Class({
+var BeforeDSL = new JS.Class('Ojay.Forms.BeforeDSL', {
     /**
      * @param {FormDescription} form
      */
@@ -980,6 +1022,7 @@ var BeforeDSL = new JS.Class({
     }
 });
 
+
 /**
  * <p>The <tt>Inputable</tt> module is mixed into <tt>Forms.Select</tt>, and indirectly into
  * <tt>Forms.Checkbox</tt> and <tt>Forms.RadioButtons.Item</tt> through <tt>Checkable</tt>.
@@ -988,8 +1031,12 @@ var BeforeDSL = new JS.Class({
  * @module Inputable
  * @private
  */
-var Inputable = new JS.Module(/** @scope Inputable */{
+var Inputable = new JS.Module('Ojay.Forms.Inputable', /** @scope Inputable */{
     include: Ojay.Observable,
+    
+    extend: {
+        DEFAULT_WRAPPER_POSITION: 'relative'
+    },
     
     /**
      * <p>Called inside class constructors to set up the behaviour of the form input and
@@ -997,7 +1044,7 @@ var Inputable = new JS.Module(/** @scope Inputable */{
      * enable class names to be changed.</p>
      */
     _setupInput: function() {
-        var wrapper = Ojay( Ojay.HTML.span() ).setStyle({position: 'relative'});
+        var wrapper = Ojay( Ojay.HTML.span() ).setStyle({position: this._options.wrapperPosition || Inputable.DEFAULT_WRAPPER_POSITION});
         this._input.insert(wrapper.node, 'before');
         wrapper.insert(this._input.node, 'bottom');
         this._input.setStyle({position: 'absolute', left: '-5000px', top: 0});
@@ -1075,6 +1122,7 @@ var Inputable = new JS.Module(/** @scope Inputable */{
     }
 });
 
+
 /**
  * <p>The <tt>Checkable</tt> module extends <tt>Inputable</tt> by providing methods to
  * handle checking and unchecking of form elements. It is used by the <tt>Forms.Checkbox</tt>
@@ -1083,7 +1131,7 @@ var Inputable = new JS.Module(/** @scope Inputable */{
  * @private
  * @module Checkable
  */
-var Checkable = new JS.Module(/** @scope Checkable */{
+var Checkable = new JS.Module('Ojay.Forms.Checkable', /** @scope Checkable */{
     include: Inputable,
     
     /**
@@ -1133,6 +1181,7 @@ var Checkable = new JS.Module(/** @scope Checkable */{
 
 JS.MethodChain.addMethod('focus');
 
+
 /**
  * <p>The <tt>Forms.RadioButtons</tt> class can be used to 'hijack' sets of radio buttons to
  * make them easier to style using CSS. The radio inputs themselves become hidden (they are positioned
@@ -1147,14 +1196,15 @@ JS.MethodChain.addMethod('focus');
  * @constructor
  * @class Forms.RadioButtons
  */
-Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype */{
+Ojay.Forms.RadioButtons = new JS.Class('Ojay.Forms.RadioButtons', /** @scope Forms.RadioButtons.prototype */{
     include: Ojay.Observable,
     
     /**
      * @param {String|HTMLElement|DomCollection} inputs
+     * @param {Object} options
      */
-    initialize: function(inputs) {
-        this._items = Ojay(inputs).map(function(input) { return new this.klass.Item(this, input); }, this);
+    initialize: function(inputs, options) {
+        this._items = Ojay(inputs).map(function(input) { return new this.klass.Item(this, input, options); }, this);
         if (this._items.map('_input.node.name').unique().length > 1)
             throw new Error('Attempt to create a RadioButtons object with radios of different names');
         this._checkedItem = this._items.filter('checked')[0] || null;
@@ -1226,15 +1276,17 @@ Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype *
          * @constructor
          * @class Forms.RadioButtons.Item
          */
-        Item: new JS.Class(/** @scope Forms.RadioButtons.Item.prototype */{
+        Item: new JS.Class('Ojay.Forms.RadioButtons.Item', /** @scope Forms.RadioButtons.Item.prototype */{
             include: Checkable,
             _inputType: 'radio',
             
             /**
              * @param {Forms.RadioButtons} group
              * @param {DomCollection} input
+             * @param {Object} options
              */
-            initialize: function(group, input) {
+            initialize: function(group, input, options) {
+                this._options = options || {};
                 styledInputs.push(this);
                 if (!input || !input.node || input.node.type != 'radio')
                     throw new TypeError('Attempt to create a RadioButtons object with non-radio element');
@@ -1245,6 +1297,7 @@ Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype *
         })
     }
 });
+
 
 /**
  * <p>The <tt>Forms.Checkbox</tt> class can be used to 'hijack' checkbox inputs in HTML forms to
@@ -1260,14 +1313,16 @@ Ojay.Forms.RadioButtons = new JS.Class(/** @scope Forms.RadioButtons.prototype *
  * @constructor
  * @class Forms.Checkbox
  */
-Ojay.Forms.Checkbox = new JS.Class(/* @scope Forms.Checkbox.prototype */{
+Ojay.Forms.Checkbox = new JS.Class('Ojay.Forms.Checkbox', /* @scope Forms.Checkbox.prototype */{
     include: Checkable,
     _inputType: 'checkbox',
     
     /**
      * @param {String|HTMLElement|DomCollection} input
+     * @param {Object} options
      */
-    initialize: function(input) {
+    initialize: function(input, options) {
+        this._options = options || {};
         styledInputs.push(this);
         this._input = Ojay(input);
         if (!this._input || !this._input.node || this._input.node.type != 'checkbox')
@@ -1295,6 +1350,7 @@ Ojay.Forms.Checkbox.include({
     setValue:   Ojay.Forms.Checkbox.prototype.setChecked
 });
 
+
 /**
  * <p>The <tt>Forms.Select</tt> class can be used to 'hijack' drop-down menu inputs in HTML forms to
  * make them easier to style using CSS. The select inputs themselves become hidden (they are positioned
@@ -1309,7 +1365,7 @@ Ojay.Forms.Checkbox.include({
  * @constructor
  * @class Forms.Select
  */
-Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
+Ojay.Forms.Select = new JS.Class('Ojay.Forms.Select', /** @scope Forms.Select.prototype */{
     include: [JS.State, Inputable],
     _inputType: 'select',
     
@@ -1323,7 +1379,7 @@ Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
          * @constructor
          * @class Forms.Select.Option
          */
-        Option: new JS.Class(/** @scope Forms.Select.Option.prototype */{
+        Option: new JS.Class('Ojay.Forms.Select.Option', /** @scope Forms.Select.Option.prototype */{
             /**
              * @param {Forms.Select} select
              * @param {HTMLElement} option
@@ -1381,8 +1437,10 @@ Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
     
     /**
      * @param {String|HTMLElement|DomCollection} select
+     * @param {Object} options
      */
-    initialize: function(select) {
+    initialize: function(select, options) {
+        this._options = options || {};
         styledInputs.push(this);
         this._input = Ojay(select);
         if (!this._input || this._input.node.tagName.toLowerCase() != 'select')
@@ -1625,5 +1683,6 @@ Ojay.Forms.Select = new JS.Class(/** @scope Forms.Select.prototype */{
         }
     }
 });
+
 
 })();

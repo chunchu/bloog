@@ -1,10 +1,13 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require ojay/core-min
+
 (function(KeyListener, Event, doc) {
     var KEYS = KeyListener.KEY;
+
 
 var /**
      * @param {String} string
@@ -71,6 +74,7 @@ var /**
         return codes.sort(compareNumbers).join(':');
     };
 
+
 /**
  * <p>The <tt>Keyboard</tt> package is used to set up event listeners that respond to keyboard
  * events. It acts as a wrapper around <tt>YAHOO.util.KeyListener</tt> and provides easier syntax
@@ -81,7 +85,7 @@ var /**
  * <p>This returns a <tt>Rule</tt> instance that lets you disable/enable the listener. See the
  * <tt>Rule</tt> class for more details.</p>
  */
-var Keyboard = Ojay.Keyboard = new JS.Singleton({
+var Keyboard = Ojay.Keyboard = new JS.Singleton('Ojay.Keyboard', {
     
     /**
      * <p>Returns a new <tt>Rule</tt> instance for the given node and key combination.</p>
@@ -107,6 +111,7 @@ var Keyboard = Ojay.Keyboard = new JS.Singleton({
     }
 });
 
+
 /**
  * <p> The <tt>Rule</tt> class encapsulates the binding of an action to a set of keys. It is
  * private, i.e. it is only accessible to the internals of the <tt>Keyboard</tt> module, but
@@ -115,7 +120,7 @@ var Keyboard = Ojay.Keyboard = new JS.Singleton({
  * @private
  * @class Rule
  */
-var Rule = new JS.Class({
+var Rule = new JS.Class('Ojay.Keyboard.Rule', {
     /**
      * @param {HTMLElement} node
      * @param {String|Array} keylist
@@ -123,7 +128,14 @@ var Rule = new JS.Class({
      * @param {Object} scope
      */
     initialize: function(node, keylist, callback, scope) {
+        var args = Array.from(arguments);
         node = Ojay(node).node;
+        if (!node) {
+            node     = document;
+            keylist  = args.shift();
+            callback = args.shift();
+            scope    = args.shift();
+        }
         if (scope) callback = callback.bind(scope);
         this._codes = codesFromKeys(keylist);
         this._listener = new KeyListener(node, hashFromCodes(this._codes), callback);
@@ -197,15 +209,23 @@ var Rule = new JS.Class({
  * @public
  * @class RuleSet
  */
-Keyboard.RuleSet = new JS.Class({
+Keyboard.RuleSet = new JS.Class('Ojay.Keyboard.RuleSet', {
     /**
+     * @param {HTMLElement} node
      * @param {Object} definitions
      */
-    initialize: function(definitions) {
+    initialize: function(node, definitions) {
+        var args = Array.from(arguments);
+        node = Ojay(node).node;
+        if (!node) {
+            node        = document;
+            definitions = args.shift();
+        }
+        this._node = node;
         this._rules = {};
         var keylist, rule;
         for (keylist in definitions) {
-            rule = new Rule(document, keylist, definitions[keylist]);
+            rule = new Rule(node, keylist, definitions[keylist]);
             // Store rules by signature to prevent duplicate key combinations
             this._rules[rule.getSignature()] = rule;
         }
@@ -263,13 +283,14 @@ Keyboard.RuleSet = new JS.Class({
     }
 });
 
+
 /**
  * <p>The <tt>Monitor</tt> is a private component used by the Keyboard package to track
  * the current combination of pressed keys. Event handlers notify this object with keys
  * to add and remove from the list. This object may be consulted to find out whether
  * a particular key code is pressed.</p>
  */
-var Monitor = new JS.Singleton({
+var Monitor = new JS.Singleton('Ojay.Keyboard.Monitor', {
     _list: [],
     
     /**
@@ -306,13 +327,14 @@ var Monitor = new JS.Singleton({
     }
 });
 
+
 /**
  * <p>The <tt>Disabler</tt> is in charge of deciding whether to prevent the default browser
  * behaviour for a given set of keys. Keyboard rules register with this object to cause
  * their behaviour to override the default behaviour. Some browsers do not allow certain
  * key comibnations to be overridden, so choose your key combinations carefully.</p>
  */
-var Disabler = new JS.Singleton({
+var Disabler = new JS.Singleton('Ojay.Keyboard.Disabler', {
     _rules: [],
     
     /**
@@ -357,6 +379,7 @@ var Disabler = new JS.Singleton({
     }
 });
 
+
 /**
  * <p>On keydown events, add the new key to the <tt>Monitor</tt> and decide whether
  * to stop the event in IE browsers.</p>
@@ -382,5 +405,6 @@ if (!YAHOO.env.ua.ie) {
 Event.on(doc, 'keyup', function(evnt) {
     Monitor._removeKey(evnt.keyCode);
 });
+
 
 })(YAHOO.util.KeyListener, YAHOO.util.Event, document);

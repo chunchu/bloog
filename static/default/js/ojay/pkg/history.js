@@ -1,8 +1,10 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require ojay/core-min
+
 /**
  * @overview
  * <p><tt>Ojay.History</tt> makes it considerably easier to create interface modules that

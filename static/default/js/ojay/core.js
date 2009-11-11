@@ -1,9 +1,10 @@
 /*
 Copyright (c) 2007-2008 the OTHER media Limited
 Licensed under the BSD license, http://ojay.othermedia.org/license.html
+Version: 0.4.1
+Build:   source
 */
-// @require yui
-// @require ojay/js-class-min
+
 /**
  * <p>Returns an object that wraps a collection of DOM element references by parsing
  * the given query using a CSS selector engine.</p>
@@ -17,7 +18,7 @@ var Ojay = function() {
     var elements = [], arg, i, n;
     for (i = 0, n = arguments.length; i < n; i++) {
         arg = arguments[i];
-        if (typeof arg == 'string') arg = Ojay.query(arg);
+        if (typeof arg == 'string') arg = Ojay.cssEngine.query(arg);
         if (arg.toArray) arg = arg.toArray();
         if (!(arg instanceof Array)) arg = [arg];
         elements = elements.concat(arg);
@@ -25,14 +26,17 @@ var Ojay = function() {
     return new Ojay.DomCollection(elements.unique());
 };
 
+Ojay.VERSION = '0.4.1';
+
+Array.from = JS.array;
+
+Function.prototype.bind = function() {
+    return JS.bind.apply(JS, [this].concat(JS.array(arguments)));
+};
+
+
 (function(Dom) {
     JS.extend(Ojay, /** @scope Ojay */{
-        
-        query: function(selector, node) {
-            return document.querySelectorAll
-                    ? Array.from((node || document).querySelectorAll(selector))
-                    : YAHOO.util.Selector.query(selector, node);
-        },
         
         /**
          * <p>Returns an Ojay Collection containing zero or one element that matches the ID. Used
@@ -137,6 +141,7 @@ var Ojay = function() {
 })(YAHOO.util.Dom);
 
 Ojay.changeAlias('$');
+
 
 /**
  * <p>This object contains definitions for <tt>Array</tt> instance methods defined
@@ -499,6 +504,7 @@ Ojay.ARRAY_METHODS = {
 
 JS.extend(Array.prototype, Ojay.ARRAY_METHODS);
 
+
 /**
  * Functional extensions: Copyright (c) 2005-2008 Sam Stephenson / the Prototype team,
  * released under an MIT-style license.
@@ -664,6 +670,7 @@ JS.extend(Function.prototype, /** @scope Function.prototype */{
     }
 });
 
+
 /**
  * String extensions: Copyright (c) 2005-2008 Sam Stephenson / the Prototype team,
  * released under an MIT-style license.
@@ -726,6 +733,7 @@ JS.extend(String.prototype, /** @scope String.prototype */{
     trim: YAHOO.lang.trim.methodize()
 });
 
+
 /**
  * @overview
  * <p>Ojay adds all the single-number functions in <tt>Math</tt> as methods to <tt>Number</tt>.
@@ -762,6 +770,7 @@ Number.prototype.between = function(a, b, inclusive) {
     if (this > a && this < b) return true;
     return (this == a || this == b) ? (inclusive !== false) : false;
 };
+
 
 /**
  * Copyright (c) 2007-2008 James Coglan
@@ -840,6 +849,126 @@ Function.fromObject = function(object) {
   });
 }, Array.prototype);
 
+
+/**
+ * @overview
+ * <p>This file contains adapter objects that allow Ojay to use a variety of CSS selector
+ * backends. Given that CSS engines are now being released as standalone libraries, it
+ * makes sense to let people choose which one they want to use.</p>
+ * 
+ * <p>Ojay includes support for <tt>YAHOO.util.Selector</tt>, <tt>Sizzle</tt> and
+ * <tt>peppy</tt> engines, but it is trivial to add support for others.</p>
+ */
+Ojay.Selectors = {
+    Native: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return Array.from((context || document).querySelectorAll(selector));
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            var results = this.query(selector, node.parentNode);
+            return results.indexOf(node) != -1;
+        }
+    },
+    
+    Yahoo: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return YAHOO.util.Selector.query(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            return YAHOO.util.Selector.test(node, selector);
+        }
+    },
+    
+    Ext: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return Ext.DomQuery.select(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            return Ext.DomQuery.is(node, selector);
+        }
+    },
+    
+    Sizzle: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return Sizzle(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            return Sizzle.filter(selector, [node]).length === 1;
+        }
+    },
+    
+    Peppy: {
+        /**
+         * @param {String} selector
+         * @param {HTMLElement} context
+         * @returns {Array}
+         */
+        query: function(selector, context) {
+            return peppy.query(selector, context);
+        },
+        
+        /**
+         * @param {HTMLElement} node
+         * @param {String} selector
+         * @returns {Boolean}
+         */
+        test: function(node, selector) {
+            var results = peppy.query(selector, node, true);
+            return results.indexOf(node) != -1;
+        }
+    }
+};
+
+// Default choice is YUI, or qSA if available
+Ojay.cssEngine = document.querySelectorAll
+               ? Ojay.Selectors.Native
+               : Ojay.Selectors.Yahoo;
+
+
 (function(Event) {
     JS.extend(Ojay, /** @scope Ojay */{
         /**
@@ -916,6 +1045,7 @@ Function.fromObject = function(object) {
     });
 })(YAHOO.util.Event);
 
+
 /**
  * <p>The <tt>Ojay.Observable</tt> module extends the <tt>JS.Observable</tt> module with an
  * <tt>on()</tt> method that behaves similarly to <tt>DomCollection#on()</tt>, used for
@@ -981,10 +1111,13 @@ Function.fromObject = function(object) {
  *
  * @module Observable
  */
-Ojay.Observable = new JS.Module({
+Ojay.Observable = new JS.Module('Ojay.Observable', {
     include: JS.Observable,
     
     /**
+     * <p>Registers an event listener on the object. Takes an event name and an optional
+     * callback function, and returns a <tt>MethodChain</tt> that will fire on the source
+     * object. The callback receives the source object as the first parameter.</p>
      * @param {String} eventName
      * @param {Function} callback
      * @param {Object} scope
@@ -996,16 +1129,49 @@ Ojay.Observable = new JS.Module({
         this.addObserver(function() {
             var args = Array.from(arguments), message = args.shift();
             if (message != eventName) return;
-            var receiver = (args[0]||{}).receiver || this;
-            if (typeof callback == 'function') {
-                if (receiver !== this) args.shift();
-                callback.apply(scope || null, [receiver].concat(args));
-            }
-            chain.fire(scope || receiver);
+            if (typeof callback == 'function') callback.apply(scope || null, args);
+            chain.fire(scope || args[0]);
         }, this);
         return chain;
+    },
+    
+    /**
+     * <p>Notifies all observers of an object, sending them the supplied arguments. Use
+     * the first argument to specify the event name for handlers registered using
+     * <tt>Observable#on()</tt>.</p>
+     * @returns {Observable}
+     */
+    notifyObservers: function() {
+        var args = Array.from(arguments),
+            receiver = (args[1]||{}).receiver || this;
+        
+        if (receiver == this) args.splice(1, 0, receiver);
+        else args[1] = receiver;
+        
+        this.callSuper.apply(this, args);
+        
+        args[1] = {receiver: receiver};
+        var classes = this.klass.ancestors(), klass;
+        while (klass = classes.pop())
+            klass.notifyObservers && klass.notifyObservers.apply(klass, args);
+        
+        return this;
+    },
+    
+    extend: /** @scope Ojay.Observable */{
+        /**
+         * <p>Any module that includes <tt>Observable</tt> is also extended
+         * using <tt>Observable</tt>.</p>
+         * @param {Class|Module} base
+         */
+        included: function(base) {
+            base.extend(this);
+        }
     }
 });
+
+Ojay.Observable.extend(Ojay.Observable);
+
 
 (function(Ojay, Dom) {
     /**
@@ -1015,8 +1181,7 @@ Ojay.Observable = new JS.Module({
      * @constructor
      * @class DomCollection
      */
-    Ojay.DomCollection = new JS.Class(/** @scope Ojay.DomCollection.prototype */{
-        
+    Ojay.DomCollection = new JS.Class('Ojay.DomCollection', /** @scope Ojay.DomCollection.prototype */{
         /**
          * @param {Array} collection
          * @returns {DomCollection}
@@ -1135,7 +1300,9 @@ Ojay.Observable = new JS.Module({
         on: function(eventName, callback, scope) {
             var chain = new JS.MethodChain;
             if (callback && typeof callback != 'function') scope = callback;
-            YAHOO.util.Event.on(this, eventName, function(evnt) {
+            
+            var handler = function(evnt) {
+                if (evnt.eventName !== undefined && evnt.eventName != eventName) return;
                 var wrapper = Ojay(this);
                 evnt.stopDefault   = Ojay.stopDefault.method;
                 evnt.stopPropagate = Ojay.stopPropagate.method;
@@ -1143,8 +1310,57 @@ Ojay.Observable = new JS.Module({
                 evnt.getTarget     = Ojay._getTarget;
                 if (typeof callback == 'function') callback.call(scope || null, wrapper, evnt);
                 chain.fire(scope || wrapper);
-            });
+            };
+            
+            if (/:/.test(eventName)) {
+                for (var i = 0, n = this.length; i < n; i++) (function(element) {
+                    var wrapped = handler.bind(element);
+                    if (element.addEventListener) {
+                        element.addEventListener('dataavailable', wrapped, false);
+                    } else {
+                        element.attachEvent('ondataavailable', wrapped);
+                        element.attachEvent('onfilterchange', wrapped);
+                    }
+                })(this[i]);
+            } else {
+                YAHOO.util.Event.on(this, eventName, handler);
+            }
             return chain;
+        },
+        
+        /**
+         * <p>Fires a custom event on each element in the collection, firing any custom event
+         * handlers that have been registered on these elements. The first argument should be
+         * the name of the event to fire, and the second argument (optional) should be a boolean
+         * indicating whether the event should bubble or not (this defaults to true).</p>
+         * @param {String} eventName
+         * @param {Object} data
+         * @param {Boolean} bubble
+         * @returns {DomCollection}
+         */
+        trigger: function(eventName, data, bubble) {
+            bubble = (bubble === undefined) ? true : false;
+            
+            for (var i = 0, n = this.length; i < n; i++) (function(element) {
+                if (element == document && document.createEvent && !element.dispatchEvent)
+                    element = document.documentElement;
+                var event;
+                if (document.createEvent) {
+                    event = document.createEvent('HTMLEvents');
+                    event.initEvent('dataavailable', bubble, true);
+                } else {
+                    event = document.createEventObject();
+                    event.eventType = bubble ? 'ondataavailable' : 'onfilterchange';
+                }
+                event.eventName = eventName;
+                JS.extend(event, data || {});
+                
+                try { document.createEvent ? element.dispatchEvent(event)
+                                           : element.fireEvent(event.eventType, event);
+                } catch (e) {}
+            })(this[i]);
+            
+            return this;
         },
         
         /**
@@ -1213,6 +1429,26 @@ Ojay.Observable = new JS.Module({
         },
         
         /**
+         * @param {Object} parameters
+         * @param {Number|Function} duration
+         * @param {Object} options
+         * @returns {MethodChain}
+         */
+        scroll: function(parameters, duration, options) {
+            if (duration) {
+                var animation = new Ojay.Animation(this, {scroll: {to: parameters}}, duration, options, YAHOO.util.Scroll);
+                animation.run();
+                return animation.chain;
+            } else {
+                for (var i = 0, n = this.length; i < n; i++) {
+                    this[i].scrollLeft = parameters[0];
+                    this[i].scrollTop = parameters[1];
+                }
+                return this;
+            }
+        },
+        
+        /**
          * <p>Adds the given string as a class name to all the elements in the collection and returns
          * a reference to the collection for chaining.</p>
          * @param {String} className
@@ -1220,6 +1456,7 @@ Ojay.Observable = new JS.Module({
          */
         addClass: function(className) {
             Dom.addClass(this, className);
+            this.trigger('ojay:classadded', {className: className}, false);
             return this;
         },
         
@@ -1231,6 +1468,7 @@ Ojay.Observable = new JS.Module({
          */
         removeClass: function(className) {
             Dom.removeClass(this, className);
+            this.trigger('ojay:classremoved', {className: className}, false);
             return this;
         },
         
@@ -1243,6 +1481,8 @@ Ojay.Observable = new JS.Module({
          */
         replaceClass: function(oldClass, newClass) {
             Dom.replaceClass(this, oldClass, newClass);
+            this.trigger('ojay:classremoved', {className: oldClass}, false);
+            this.trigger('ojay:classadded', {className: newClass}, false);
             return this;
         },
         
@@ -1253,7 +1493,10 @@ Ojay.Observable = new JS.Module({
          * @returns {DomCollection}
          */
         setClass: function(className) {
-            return this.setAttributes({className: className});
+            for (var i = 0, n = this.length; i < n; i++)
+                this[i].className = className;
+            this.trigger('ojay:classadded', {className: className}, false);
+            return this;
         },
         
         /**
@@ -1300,33 +1543,49 @@ Ojay.Observable = new JS.Module({
                 }
                 Dom.setStyle(this, property, options[property]);
             }
+            this.trigger('ojay:stylechange', {styles: options}, false);
             return this;
         },
         
         /**
          * <p>Sets the given HTML attributes of all the elements in the collection, and returns the
-         * collection for chaining. Remember to use <tt>className</tt> for classes, and <tt>htmlFor</tt>
-         * for label attributes.</p>
+         * collection for chaining. Use <tt>setClass()</tt> to change class names.</p>
          *
-         * <pre><code>    Ojay('img').setAttributes({src: 'images/tom.png'});</code></pre>
+         * <pre><code>    Ojay('img').set({src: 'images/tom.png'});</code></pre>
          *
-         * @param Object options
-         * @returns DomCollection
+         * <p>Boolean attributes can be set and unset by passing in the appropriate boolean value.</p>
+         *
+         * <pre><code>    Ojay('input[type=checkbox]').set({disabled: true});</code></pre>
+         *
+         * @param {Object} options
+         * @returns {DomCollection}
          */
-        setAttributes: function(options) {
+        set: function(options) {
             for (var i = 0, n = this.length; i < n; i++) {
-                for (var key in options)
-                    this[i][key] = options[key];
+                for (var key in options) {
+                    switch (options[key]) {
+                        case true:  this[i].setAttribute(key, key);     break;
+                        case false: this[i].removeAttribute(key);       break;
+                        default:    this[i].setAttribute(key, options[key]);
+                    }
+                }
             }
+            this.trigger('ojay:attrchange', {attributes: options}, false);
             return this;
         },
+        
+        setAttributes: function() {
+            return this.set.apply(this, arguments);
+        }.traced('setAttributes() is deprecated; used set() instead', 'warn'),
         
         /**
          * <p>Hides every element in the collection and returns the collection.</p>
          * @returns {DomCollection}
          */
         hide: function() {
-            return this.setStyle({display: 'none'});
+            this.setStyle({display: 'none'});
+            this.trigger('ojay:hide', {}, false);
+            return this;
         },
         
         /**
@@ -1334,7 +1593,9 @@ Ojay.Observable = new JS.Module({
          * @returns {DomCollection}
          */
         show: function() {
-            return this.setStyle({display: ''});
+            this.setStyle({display: ''});
+            this.trigger('ojay:show', {}, false);
+            return this;
         },
         
         /**
@@ -1357,6 +1618,7 @@ Ojay.Observable = new JS.Module({
                     element.insert(html, 'bottom');
                 });
             }
+            this.trigger('ojay:contentchange', {content: html}, true);
             return this;
         },
         
@@ -1383,6 +1645,7 @@ Ojay.Observable = new JS.Module({
             if (position == 'replace') return this.setContent(html);
             if (html instanceof this.klass) html = html.node;
             new Ojay.DomInsertion(this.toArray(), html, position);
+            this.trigger('ojay:insert', {content: html, position: position}, true);
             return this;
         },
         
@@ -1395,6 +1658,7 @@ Ojay.Observable = new JS.Module({
                 if (element.parentNode)
                     element.parentNode.removeChild(element);
             });
+            this.trigger('ojay:remove', {}, true);
             return this;
         },
         
@@ -1405,7 +1669,7 @@ Ojay.Observable = new JS.Module({
          */
         matches: function(selector) {
             if (!this.node) return undefined;
-            return YAHOO.util.Selector.test(this.node, selector);
+            return Ojay.cssEngine.test(this.node, selector);
         },
         
         /**
@@ -1481,7 +1745,7 @@ Ojay.Observable = new JS.Module({
             selector = selector || '*';
             var descendants = [];
             this.toArray().forEach(function(element) {
-                var additions = Ojay.query(selector, element), arg;
+                var additions = Ojay.cssEngine.query(selector, element), arg;
                 while (arg = additions.shift()) {
                     if (descendants.indexOf(arg) == -1)
                         descendants.push(arg);
@@ -1532,6 +1796,7 @@ Ojay.Observable = new JS.Module({
                 var reg = element.getRegion(), w = reg.getWidth(), h = reg.getHeight();
                 element.setStyle({width: (2 * width - w) + 'px', height: (2 * height - h) + 'px'});
             });
+            this.trigger('ojay:regionfit', {}, false);
             return this;
         },
         
@@ -1661,6 +1926,7 @@ Ojay.Observable = new JS.Module({
 
 Ojay.fn = Ojay.DomCollection.prototype;
 
+
 /**
  * <p>The <tt>DomInsertion</tt> class is used to insert new strings and elements into the DOM.
  * It should not be used as a public API; you should use <tt>DomCollection</tt>'s <tt>insert</tt>
@@ -1673,7 +1939,7 @@ Ojay.fn = Ojay.DomCollection.prototype;
  * @contructor
  * @class DomInsertion
  */
-Ojay.DomInsertion = new JS.Class(/** @scope Ojay.DomInsertion.prototype */{
+Ojay.DomInsertion = new JS.Class('Ojay.DomInsertion', /** @scope Ojay.DomInsertion.prototype */{
     
     /**
      * @param {Array|HTMLElement} elements
@@ -1775,6 +2041,7 @@ Ojay.DomInsertion = new JS.Class(/** @scope Ojay.DomInsertion.prototype */{
     }
 });
 
+
 /**
  * <p>Sane DOM node creation API, inspired by
  * <a href="http://api.rubyonrails.org/classes/Builder/XmlMarkup.html"><tt>Builder::XmlMarkup</tt></a>
@@ -1855,7 +2122,7 @@ Ojay.DomInsertion = new JS.Class(/** @scope Ojay.DomInsertion.prototype */{
  * @constructor
  * @class HtmlBuilder
  */
-Ojay.HtmlBuilder = new JS.Class(/* @scope Ojay.HtmlBuilder.prototype */{
+Ojay.HtmlBuilder = new JS.Class('Ojay.HtmlBuilder', /* @scope Ojay.HtmlBuilder.prototype */{
     
     /**
      * @param {HTMLElement} node
@@ -1880,8 +2147,13 @@ Ojay.HtmlBuilder = new JS.Class(/* @scope Ojay.HtmlBuilder.prototype */{
         },
         
         addTagName: function(name) {
-            this.prototype[name] = function() {
-                var node = document.createElement(name), arg, attr, style, appendable;
+            this.define(name, function() {
+                var node = document.createElement(name), arg, attr, style, appendable,
+                    type = (arguments[0]||{}).type || 'text';
+                
+                if (YAHOO.env.ua.ie && name == 'input')
+                    node = document.createElement('<input type="' + type + '">');
+                
                 loop: for (var j = 0, m = arguments.length; j < m; j++) {
                     arg = arguments[j];
                     
@@ -1910,7 +2182,7 @@ Ojay.HtmlBuilder = new JS.Class(/* @scope Ojay.HtmlBuilder.prototype */{
                 }
                 if (this._rootNode) this._rootNode.appendChild(node);
                 return node;
-            };
+            });
         },
         
         /**
@@ -1954,6 +2226,7 @@ JS.extend(Ojay.HTML, /** @scope Ojay.HTML */{
     NOTATION_NODE:                  12
 });
 
+
 /**
  * @overview
  * <p>The <tt>Animation</tt> class is used to set up all animations in Ojay. It is entirely
@@ -1962,19 +2235,25 @@ JS.extend(Ojay.HTML, /** @scope Ojay.HTML */{
  * @constructor
  * @class Animation
  */
-Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
+Ojay.Animation = new JS.Class('Ojay.Animation', /** @scope Ojay.Animation.prototype */{
+    
+    extend: /** @scope Ojay.Animation */{
+        DEFAULT_YUI_CLASS: YAHOO.util.ColorAnim
+    },
     
     /**
      * @param {DomCollection} elements
      * @param {Object|Function} parameters
      * @param {Number|Function} duration
      * @param {Object} options
+     * @param {klass} animationClass
      */
-    initialize: function(elements, parameters, duration, options) {
+    initialize: function(elements, parameters, duration, options, animationClass) {
         this._collection        = elements;
         this._parameters        = parameters || {};
         this._duration          = duration || 1.0;
         this._options           = options || {};
+        this._animClass         = animationClass || this.klass.DEFAULT_YUI_CLASS;
         this._easing            = YAHOO.util.Easing[this._options.easing || 'easeBoth'];
         var after = this._options.after, before = this._options.before;
         this._afterCallback     = after && Function.from(after);
@@ -1990,7 +2269,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
      */
     _evaluateOptions: function(options, element, i) {
         if (typeof options == 'function') options = options(i, element);
-        if (typeof options != 'object') return options;
+        if ((options instanceof Array) || (typeof options != 'object')) return options;
         var results = {};
         for (var field in options) results[field] = arguments.callee(options[field], element, i);
         return results;
@@ -2007,14 +2286,16 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
         var callbackAttached = false;
         
         var after = this._afterCallback, before = this._beforeCallback;
+        this._collection.trigger('ojay:animstart', {}, false);
         
         this._collection.forEach(function(element, i) {
             var parameters = paramSets[i], duration = durations[i];
-            var anim = new YAHOO.util.ColorAnim(element.node, parameters, duration, this._easing);
+            var anim = new this._animClass(element.node, parameters, duration, this._easing);
             anim.onComplete.subscribe(function() {
                 if (YAHOO.env.ua.ie && (parameters.opacity || {}).to !== undefined)
                     element.setStyle({opacity: parameters.opacity.to});
                 
+                element.trigger('ojay:animend', {}, false);
                 if (after) after(element, i);
                 
                 if (duration == maxDuration && !callbackAttached) {
@@ -2028,6 +2309,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
     }
 });
 
+
 (function(Region) {
     /**
      * <p>The <tt>Region</tt> class wraps YUI's <tt>Region</tt> class and extends its API. This
@@ -2036,7 +2318,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
      * @constructor
      * @class Region
      */
-    Ojay.Region = new JS.Class(/** @scope Ojay.Region.prototype */{
+    Ojay.Region = new JS.Class('Ojay.Region', /** @scope Ojay.Region.prototype */{
         
         contains:   Region.prototype.contains,
         getArea:    Region.prototype.getArea,
@@ -2108,6 +2390,22 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
         },
         
         /**
+         * @param {Number} left
+         * @param {Number} top
+         * @returns {Region}
+         */
+        centerOn: function(left, top) {
+            var myCenter = this.getCenter(), theirCenter;
+            if (typeof left == 'object') {
+                theirCenter = left.getCenter();
+                left = theirCenter.left;
+                top = theirCenter.top;
+            }
+            this.shift(left - myCenter.left, top - myCenter.top);
+            return this;
+        },
+        
+        /**
          * @param {Region} region
          * @returns {Region}
          */
@@ -2156,6 +2454,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
     });
 })(YAHOO.util.Region);
 
+
 /**
  * <p>The <tt>Sequence</tt> class allows iteration over an array using a timer to
  * skip from member to member. At each timeframe, the sequence object calls a user-
@@ -2164,7 +2463,7 @@ Ojay.Animation = new JS.Class(/** @scope Ojay.Animation.prototype */{
  * @constructor
  * @class Ojay.Sequence
  */
-Ojay.Sequence = new JS.Class(/** @scope Ojay.Sequence.prototype */{
+Ojay.Sequence = new JS.Class('Ojay.Sequence', /** @scope Ojay.Sequence.prototype */{
     
     /**
      * @param {Array} list
@@ -2247,7 +2546,7 @@ Ojay.Sequence = new JS.Class(/** @scope Ojay.Sequence.prototype */{
  *     var element = Ojay('#something');
  *     
  *     var sequence = imgs.sequence(function(imgageSource, i) {
- *         element.setAttributes({src: imageSource});
+ *         element.set({src: imageSource});
  *     });
  *     
  *     // Start sequence looping with a time period
@@ -2284,14 +2583,23 @@ Ojay.DomCollection.include(/** @scope Ojay.DomCollection.prototype */{
     }
 });
 
+
 JS.MethodChain.addMethods(Ojay);
-JS.MethodChain.addMethods(Ojay.HTML);
 
-// Modify MethodChain to allow CSS selectors
-JS.MethodChain.prototype._ = JS.MethodChain.prototype._.wrap(function() {
-    var args = Array.from(arguments), _ = args.shift();
-    if (typeof args[0] == 'string') return _(Ojay, args[0]);
-    else return _.apply(this, args);
-});
-
-Ojay.VERSION = '0.2.0';
+(function() {
+    // ObjectMethods will be renamed to Kernel in JS.Class 2.1
+    var kernel = JS.ObjectMethods || JS.Kernel;
+    
+    var convertSelectors = function() {
+        var args = Array.from(arguments), _ = args.shift();
+        if (typeof args[0] == 'string') return _(Ojay, args[0]);
+        else return _.apply(this, args);
+    };
+    
+    // Modify MethodChain to allow CSS selectors
+    JS.MethodChain.prototype._ = JS.MethodChain.prototype._.wrap(convertSelectors);
+    
+    kernel.include({
+        _: kernel.instanceMethod('_').wrap(convertSelectors)
+    });
+})();
