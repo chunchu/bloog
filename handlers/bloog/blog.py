@@ -542,30 +542,29 @@ class YearHandler(restful.Controller):
     def get(self, year):
         logging.debug("YearHandler#get for year %s", year)
         start_date = datetime.datetime(string.atoi(year), 1, 1)
-        end_date = datetime.datetime(string.atoi(year), 12, 31, 23, 59, 59)
+        end_date = datetime.datetime(string.atoi(year)+1, 1, 1)
         page = view.ViewPage()
         page.render_query(
             self, 'articles', 
             db.Query(models.blog.Article).order('-published'). \
                filter('published >=', start_date). \
-               filter('published <=', end_date), 
+               filter('published <', end_date), 
             {'title': 'Articles for ' + year, 'year': year})
 
 class MonthHandler(restful.Controller):
     def get(self, year, month):
-        logging.debug("MonthHandler#get for year %s, month %s", year, month)
-        start_date = datetime.datetime(string.atoi(year), 
-                                       string.atoi(month), 1)
-        end_date = datetime.datetime(string.atoi(year), 
-                                     string.atoi(month), 31, 23, 59, 59)
+        logging.info("MonthHandler#get for year %s, month %s", year, month)
+        iyear = string.atoi(year)
+        imonth = string.atoi(month)
+        start_date = datetime.datetime(iyear, imonth, 1)
+        end_date = datetime.datetime(iyear, imonth+1, 1)
         page = view.ViewPage()
-        page.render_query(
-            self, 'articles', 
+        page.render_query( self, 'articles', 
             db.Query(models.blog.Article).order('-published'). \
                filter('published >=', start_date). \
-               filter('published <=', end_date), 
+               filter('published <', end_date), 
             {'title': 'Articles for ' + month + '/' + year, 
-             'year': year, 'month': month})
+             'year': year, 'month': month} )
 
     @authorized.role("admin")
     def post(self, year, month):
