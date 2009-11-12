@@ -38,13 +38,13 @@ YAHOO.bloog.initComments = function() {
         parent_id = YAHOO.bloog.action.split('#')[1];
         if (parent_id == '') {
             // Should be inserted at top
-            Ojay('#commentslist').insert(response, 'top');
+            $$('#commentslist').insert(response, 'top');
         }
         else {
-            Ojay('#' + parent_id).insert(response, 'after');
+            $$('#' + parent_id).insert(response, 'after');
         }
         var num_comments = Number(document.getElementById('num_comments').innerHTML) + 1;
-        Ojay('#num_comments').setContent(String(num_comments));
+        $$('#num_comments').setContent(String(num_comments));
         YAHOO.bloog.commentEditor.hide();
         YAHOO.bloog.commentDialog.hide();
     }
@@ -54,11 +54,11 @@ YAHOO.bloog.initComments = function() {
     var handleSubmit = function() {
         YAHOO.bloog.commentEditor.saveHTML();
         var html = YAHOO.bloog.commentEditor.get('element').value;
-        var captcha = YAHOO.util.Dom.get('captcha').value;
-        var name = YAHOO.util.Dom.get('commentName').value;
-        var email = YAHOO.util.Dom.get('commentEmail').value;
-        var homepage = YAHOO.util.Dom.get('commentHomepage').value;
-        var title = YAHOO.util.Dom.get('commentTitle').value;
+        var captcha = $('captcha').value;
+        var name = $('commentName').value;
+        var email = $('commentEmail').value;
+        var homepage = $('commentHomepage').value;
+        var title = $('commentTitle').value;
         // Key needs to be transmitted because fragment doesn't seem to make
         //  it through webob request object.
         var postData = 'key=' + encodeURIComponent(YAHOO.bloog.action) + '&' +
@@ -139,7 +139,7 @@ YAHOO.bloog.initComments = function() {
     YAHOO.bloog.commentDialog.hideEvent.subscribe(YAHOO.bloog.commentEditor.hide, YAHOO.bloog.commentEditor, true);
 
     // Use event bubbling so we don't have to attach listeners to each reply
-    Ojay('div#comments_wrapper').on('click', Ojay.delegateEvent({
+    $$('div#comments_wrapper').on('click', Ojay.delegateEvent({
         'a.replybtn': function(link, e) {
             e.stopDefault();
             YAHOO.bloog.action = link.node.href;
@@ -148,4 +148,4 @@ YAHOO.bloog.initComments = function() {
     }))
 }
 
-YAHOO.util.Event.onDOMReady(YAHOO.bloog.initComments);
+Ojay.onDOMReady(YAHOO.bloog.initComments);

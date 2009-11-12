@@ -36,10 +36,14 @@ YAHOO.bloog.handleCancel = function () {
     this.cancel();
 };
 
-$.onDOMReady(function() {
-  $('#archiveLink').on('click', function(elem,e) {
+
+Ojay.changeAlias('$$'); // like Prototype.js
+$ = function(id) { return Ojay.byId(id).node; };
+
+Ojay.onDOMReady(function() {
+  $$('#archiveLink').on('click', function(elem,e) {
     e.stopEvent();
-    var archives = $('#archives').node;
+    var archives = $('archives');
     archives.style.display = ( archives.style.display == 'none' ) ?
       archives.style.display = 'block' : archives.style.display= 'none';
   });

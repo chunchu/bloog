@@ -25,7 +25,7 @@
 YAHOO.bloog.initAdmin = function() {
 
     var showRTE = function(e) {
-        var hdr = $('div#postDialog div.hd');
+        var hdr = $$('div#postDialog div.hd');
         YAHOO.bloog.http = {};
         switch (this.id) {
             case 'newarticle':
@@ -62,11 +62,10 @@ YAHOO.bloog.initAdmin = function() {
     }
 
     YAHOO.bloog.populateDialog = function(o) {
-        var article = YAHOO.lang.JSON.parse( o.responseText );
-        YAHOO.util.Dom.get("postTitle").value = article.title;
-        if (article.tags) 
-            YAHOO.util.Dom.get("postTags").value = article.tags.join(', ');
-        YAHOO.util.Dom.get("postDate").value = article.published;
+        var article = o.responseText.parseJSON();
+        $("postTitle").value = article.title;
+        if (article.tags) $("postTags").value = article.tags.join(', ');
+        $("postDate").value = article.published;
         YAHOO.bloog.editor.setEditorHTML( article.body );
         YAHOO.bloog.postDialog.render();
         YAHOO.bloog.postDialog.show();
@@ -91,9 +90,9 @@ YAHOO.bloog.initAdmin = function() {
     var handleSubmit = function() {
         YAHOO.bloog.editor.saveHTML();
         var html = YAHOO.bloog.editor.get('element').value;
-        var title = YAHOO.util.Dom.get('postTitle').value;
-        var tags = YAHOO.util.Dom.get('postTags').value;
-        var publishDt = YAHOO.util.Dom.get('postDate').value;
+        var title = $('postTitle').value;
+        var tags = $('postTags').value;
+        var publishDt = $('postDate').value;
         var postData = 'title=' + encodeURIComponent(title) + 
                        '&tags=' + encodeURIComponent(tags) + 
                        '&published=' + encodeURIComponent(publishDt) +
@@ -139,27 +138,6 @@ YAHOO.bloog.initAdmin = function() {
             draggable: true,
             buttonType: 'advanced',
             buttons: [
-                /*** Prefer to have blog articles of one font and use consistent sizing
-                { group: 'fontstyle', label: 'Font Name and Size',
-                    buttons: [
-                        { type: 'select', label: 'Arial', value: 'fontname', disabled: true,
-                            menu: [
-                                { text: 'Arial', checked: true },
-                                { text: 'Arial Black' },
-                                { text: 'Comic Sans MS' },
-                                { text: 'Courier New' },
-                                { text: 'Lucida Console' },
-                                { text: 'Tahoma' },
-                                { text: 'Times New Roman' },
-                                { text: 'Trebuchet MS' },
-                                { text: 'Verdana' }
-                            ]
-                        },
-                        { type: 'spin', label: '13', value: 'fontsize', range: [ 9, 75 ], disabled: true }
-                    ]
-                },
-                { type: 'separator' },
-                ***/
                 { group: 'textstyle', label: 'Font Style',
                     buttons: [
                         { type: 'push', label: 'Bold CTRL + SHIFT + B', value: 'bold' },
@@ -270,16 +248,16 @@ YAHOO.bloog.initAdmin = function() {
     
     YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'none' );
     YAHOO.bloog.postDialog.beforeShowEvent.subscribe( function() {
-      YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'block' ) },
+        YAHOO.bloog.postDialog.element.style.display='block'; },
       YAHOO.bloog.postDialog, true );
     YAHOO.bloog.postDialog.hideEvent.subscribe( function() {
-      YAHOO.util.Dom.setStyle( YAHOO.bloog.postDialog.element, 'display', 'none' ) },
+        YAHOO.bloog.postDialog.element.style.display= 'none'; },
       YAHOO.bloog.postDialog, true );
       
-    YAHOO.bloog.postDialog.showEvent.subscribe(YAHOO.bloog.editor.show,
-                                               YAHOO.bloog.editor, true);
-    YAHOO.bloog.postDialog.hideEvent.subscribe(YAHOO.bloog.editor.hide,
-                                               YAHOO.bloog.editor, true);
+    YAHOO.bloog.postDialog.showEvent.subscribe(
+        YAHOO.bloog.editor.show, YAHOO.bloog.editor, true );
+    YAHOO.bloog.postDialog.hideEvent.subscribe(
+        YAHOO.bloog.editor.hide, YAHOO.bloog.editor, true );
     
     YAHOO.bloog.calendar = new YAHOO.widget.Calendar( 'cal1', 
       "postDateContainer", {close:true, title:"Choose a Date"} );
@@ -289,7 +267,7 @@ YAHOO.bloog.initAdmin = function() {
     };
     YAHOO.bloog.dateSelectHandler = function() {
       var dt = YAHOO.bloog.calendar.getSelectedDates()[0];
-      YAHOO.util.Dom.get("postDate").value = YAHOO.bloog.formatDate(dt);
+      $("postDate").value = YAHOO.bloog.formatDate(dt);
       YAHOO.bloog.calendar.hide();
     };
 
@@ -299,9 +277,7 @@ YAHOO.bloog.initAdmin = function() {
       YAHOO.bloog.calendar.show, YAHOO.bloog.calendar, true );
 
     var handleDelete = function() {
-        var cObj = YAHOO.util.Connect.asyncRequest(
-            'DELETE',
-            '#', 
+        var cObj = YAHOO.util.Connect.asyncRequest( 'DELETE', '#', 
             { success: YAHOO.bloog.handleSuccess, 
               failure: YAHOO.bloog.handleFailure }
         );
@@ -318,7 +294,7 @@ YAHOO.bloog.initAdmin = function() {
                        { text: "Cancel", 
                          handler: function () { this.hide(); },
                          isDefault: true } ]
-        })
+        });
     YAHOO.bloog.deleteDialog.setHeader("Warning");
     YAHOO.bloog.deleteDialog.setBody("Are you sure you want to delete this post?");
     YAHOO.bloog.deleteDialog.render(document.body);
@@ -327,6 +303,6 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.on("newblog", "click", showRTE);
     YAHOO.util.Event.on("editbtn", "click", showRTE);
     YAHOO.util.Event.on("deletebtn", "click", function (e) { YAHOO.bloog.deleteDialog.show(); });
-}
+};
 
-YAHOO.util.Event.onDOMReady(YAHOO.bloog.initAdmin);
+Ojay.onDOMReady( YAHOO.bloog.initAdmin );
