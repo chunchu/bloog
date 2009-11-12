@@ -1,31 +1,30 @@
-<style type="text/css">  
-p span.displaynone { display:none; }
-</style>  
 <div id="commentDialog" class="popupDialog initialHide">
     <div class="hd">Enter Your Comment</div>
     <div class="bd">
         <form id="commentDialogForm" name="commentDialogForm" method="post" action="#">
             <p>
-                <label for="captcha">Verify you are human by entering the letters below: 
-                    {{ captcha1 }}<span class="displaynone">null</span>{{ captcha2 }}
-                </label><br />
-                <input type="text" id="captcha" name="captcha" size="30" />
-            </p>
-            <p>
                 <label for="commentName">Name:</label><br />
                 <input type="text" id="commentName" name="commentName" size="50" />
             </p>
             <p>
+              <div class='row left'>
                 <label for="commentEmail">E-mail: (used for Gravatar)</label><br />
                 <input type="text" id="commentEmail" name="commentEmail" size="50" />
-            </p>
-            <p>
+              </div>
+              <div class='row'>
                 <label for="commentHomepage">Homepage:</label><br />
                 <input type="text" id="commentHomepage" name="commentHomepage" size="50" />
+              </div>
             </p>
             <p>
                 <label for="commentTitle">Title:</label><br />
                 <input type="text" id="commentTitle" name="commentTitle" size="50" />
+            </p>
+            <p>
+                <label for="captcha">Verify you are human by entering the letters below: 
+                    <strong>{{ captcha1 }}<span class="dn">null</span>{{ captcha2 }}</strong>
+                </label><br />
+                <input type="text" id="captcha" name="captcha" size="30" />
             </p>
             <textarea name="commentBody" id="commentBody" cols="50" rows="10">
                 <strong>Please enter your comment here.</strong>

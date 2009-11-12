@@ -25,7 +25,7 @@
 YAHOO.bloog.initComments = function() {
 
     var showRTE = function(e) {
-        YAHOO.util.Dom.removeClass('commentDialog', 'initialHide');
+        $$('#commentDialog').removeClass('initialHide');
         YAHOO.bloog.commentEditor.setEditorHTML('<p>Comment goes here</p>');
         YAHOO.bloog.commentDialog.render();
         YAHOO.bloog.commentDialog.show();
@@ -43,7 +43,7 @@ YAHOO.bloog.initComments = function() {
         else {
             $$('#' + parent_id).insert(response, 'after');
         }
-        var num_comments = Number(document.getElementById('num_comments').innerHTML) + 1;
+        var num_comments = Number($('num_comments').innerHTML) + 1;
         $$('#num_comments').setContent(String(num_comments));
         YAHOO.bloog.commentEditor.hide();
         YAHOO.bloog.commentDialog.hide();
@@ -53,7 +53,7 @@ YAHOO.bloog.initComments = function() {
     }
     var handleSubmit = function() {
         YAHOO.bloog.commentEditor.saveHTML();
-        var html = YAHOO.bloog.commentEditor.get('element').value;
+        var html = YAHOO.bloog.commentEditor.getEditorHTML();
         var captcha = $('captcha').value;
         var name = $('commentName').value;
         var email = $('commentEmail').value;
