@@ -24,9 +24,12 @@
 
 YAHOO.bloog.initComments = function() {
 
-    var showRTE = function(e) {
+    var showRTE = function(link) {
         $$('#commentDialog').removeClass('initialHide');
-        YAHOO.bloog.commentEditor.setEditorHTML('<p>Comment goes here</p>');
+        YAHOO.bloog.commentEditor.setEditorHTML('<p>Enter your comments here.</p>');
+        $('commentTitle').value = "Re: " + ( (link.hash.length > 1) ?
+          $$(link.hash).descendants('.comment_meta .subject').node.innerHTML
+          : $('blogtitle').innerHTML );
         Recaptcha.create( $('recaptcha_pub_key').innerHTML, 
           'recaptcha_container', { theme: "clean" } );
         YAHOO.bloog.commentDialog.render();
@@ -147,7 +150,7 @@ YAHOO.bloog.initComments = function() {
         'a.replybtn': function(link, e) {
             e.stopDefault();
             YAHOO.bloog.action = link.node.href;
-            showRTE();
+            showRTE(link.node);
         }
     }));
     
