@@ -91,27 +91,6 @@
                     </div>
                     {% endblock %}
 
-                    {% block tags %}
-                    <div class="middle_links">
-                        <h3>Categories</h3>
-                        <p class="tags">
-                        {% if blog_tags %}
-                            {% for tag in blog_tags %}
-                                {% ifnotequal tag.count 0 %}
-                                <a href="/tag/{{ tag.name|urlencode }}">{{ tag.name }}</a>
-                                ({{ tag.count }})<br />
-                                {% endifnotequal %}
-                            {% endfor %}
-                        {% else %}
-                            No posts have been tagged yet.
-                        {% endif %}
-                        </p>
-                    </div>
-                    {% endblock %}
-
-                    {% block extra_panel %}
-                    {% endblock %}
-
                     {% if user_is_admin %}
                         <!-- Administrative Console -->
                         <div class="middle_links">
@@ -119,7 +98,7 @@
                             <ul>
                                 <li><a id="newblog" href="#">New Blog Entry</a></li>
                                 <li><a id="newarticle" href="#">New Article</a>
-                                    - unsyndicated<br />(e.g., about page)</li>
+                                    - unsyndicated<br />(e.g. about page)</li>
                                 <li><a id="openshell" href="/admin/shell">Open Shell</a></li>
                                 <li><a href="/admin/cache_stats">Memcached Stats</a></li>
                                 <li><a href="/admin/timings">Timing Stats</a></li>
@@ -142,6 +121,27 @@
                             {% endfor %}
                         </ul>
                     </div>
+                    {% endblock %}
+
+                    {% block tags %}
+                    <div class="middle_links">
+                        <h3>Categories</h3>
+                        <p class="tags">
+                        {% if blog_tags %}
+                            {% for tag in blog_tags %}
+                                {% ifnotequal tag.count 0 %}
+                                <a href="/tag/{{ tag.name|urlencode }}">{{ tag.name }}</a>
+                                ({{ tag.count }})<br />
+                                {% endifnotequal %}
+                            {% endfor %}
+                        {% else %}
+                            No posts have been tagged yet.
+                        {% endif %}
+                        </p>
+                    </div>
+                    {% endblock %}
+
+                    {% block extra_panel %}
                     {% endblock %}
 
                     {% block featuredPages2 %}
