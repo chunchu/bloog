@@ -134,6 +134,7 @@ def get_html(body, markup_type):
     return body
 
 def get_captcha(key): # TODO there has to be a better way to do this :
+    logging.info( "Called CAPTCHA!!!!" )
     return ("%X" % abs(hash(str(key) + config.BLOG['title'])))[:6]
 
 def get_sanitizer_func(handler, **kwargs):
@@ -244,15 +245,20 @@ def process_comment_submission(handler, article):
          ('published', get_datetime)])
 
     # If we aren't administrator, abort if bad captcha
-    if not users.is_current_user_admin():
+    if True: #not users.is_current_user_admin():
         cap_challenge = property_hash.get('captChallenge')
         cap_response = property_hash.get('captResponse')
-        cap_validation = captcha.submit( cap_challenge, cap_response, 
-          config.BLOG['recap_private_key'], '127.0.0.1' ) # TODO capture 'from IP'
+        
+        cap_validation = captcha.RecaptchaResponse(False)
+        if cap_challenge and cap_response:
+          cap_validation = captcha.submit( cap_challenge, cap_response, 
+            config.BLOG['recap_private_key'], handler.request.remote_addr )
+        
         if not cap_validation.is_valid: 
           logging.info( "Invalid captcha: %s", cap_validation.error_code )
           handler.error(401)      # Unauthorized
           return
+          
     if 'key' not in property_hash and 'thread' not in property_hash:
         handler.error(401)
         return
