@@ -16,8 +16,8 @@ BLOG = {
     "bloog_version": "0.8",
     "html_type": "text/html",
     "charset": "utf-8",
-    "title": "Medi@rcade!",
-    "author": "Tom Nichols",
+    "title": "Thom Nichols",
+    "author": "Thom Nichols",
     # This must be the email address of a registered administrator for the 
     # application due to mail api restrictions.
     "email": "tmnichols@gmail.com",
@@ -38,6 +38,10 @@ BLOG = {
     
     # Display gravatars alongside user comments?
     "use_gravatars": True,
+    
+    # reCAPTCHA settings.  See http://recaptcha.net/api/getkey
+    "recap_public_key": "",
+    "recap_private_key": "",
     
     # Do you want to be emailed when new comments are posted?
     "send_comment_notification": True,

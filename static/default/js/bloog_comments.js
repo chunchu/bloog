@@ -54,20 +54,22 @@ YAHOO.bloog.initComments = function() {
     var handleSubmit = function() {
         YAHOO.bloog.commentEditor.saveHTML();
         var html = YAHOO.bloog.commentEditor.getEditorHTML();
-        var captcha = $('captcha').value;
+        var captResp = $('recaptcha_response_field').value;
+        var captChallenge = $('recaptcha_challenge_field').value;
         var name = $('commentName').value;
         var email = $('commentEmail').value;
         var homepage = $('commentHomepage').value;
         var title = $('commentTitle').value;
         // Key needs to be transmitted because fragment doesn't seem to make
         //  it through webob request object.
-        var postData = 'key=' + encodeURIComponent(YAHOO.bloog.action) + '&' +
-                       'captcha=' + encodeURIComponent(captcha) + '&' +
-                       'name=' + encodeURIComponent(name) + '&' +
-                       'email=' + encodeURIComponent(email) + '&' +
-                       'homepage=' + encodeURIComponent(homepage) + '&' +
-                       'title=' + encodeURIComponent(title) + '&' +
-                       'body=' + encodeURIComponent(html);
+        var postData = 'key=' + encodeURIComponent(YAHOO.bloog.action) + 
+                       '&captChallenge=' + encodeURIComponent(captChallenge) + 
+                       '&captResponse=' + encodeURIComponent(captResp) + 
+                       '&name=' + encodeURIComponent(name) + 
+                       '&email=' + encodeURIComponent(email) + 
+                       '&homepage=' + encodeURIComponent(homepage) + 
+                       '&title=' + encodeURIComponent(title) + 
+                       '&body=' + encodeURIComponent(html);
         var cObj = YAHOO.util.Connect.asyncRequest(
             'POST', 
             YAHOO.bloog.action, 
@@ -145,7 +147,8 @@ YAHOO.bloog.initComments = function() {
             YAHOO.bloog.action = link.node.href;
             showRTE();
         }
-    }))
-}
+    }));
+    
+};
 
 Ojay.onDOMReady(YAHOO.bloog.initComments);

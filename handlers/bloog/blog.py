@@ -56,6 +56,7 @@ from google.appengine.api import urlfetch
 from handlers import restful
 from utils import authorized
 from utils import sanitizer
+from utils.external import captcha
 import models
 import view
 import config
@@ -132,7 +133,7 @@ def get_html(body, markup_type):
         return textile.textile(body)
     return body
 
-def get_captcha(key):
+def get_captcha(key): # TODO there has to be a better way to do this :
     return ("%X" % abs(hash(str(key) + config.BLOG['title'])))[:6]
 
 def get_sanitizer_func(handler, **kwargs):
@@ -238,17 +239,20 @@ def process_comment_submission(handler, article):
          ('body', sanitize_comment),
          'key',
          'thread',    # If it's given, use it.  Else generate it.
-         'captcha',
+         'captChallenge',
+         'captResponse',
          ('published', get_datetime)])
 
     # If we aren't administrator, abort if bad captcha
     if not users.is_current_user_admin():
-        if property_hash.get('captcha', None) != get_captcha(article.key()):
-            logging.info("Received captcha (%s) != %s", 
-                          property_hash.get('captcha', None),
-                          get_captcha(article.key()))
-            handler.error(401)      # Unauthorized
-            return
+        cap_challenge = property_hash.get('captChallenge')
+        cap_response = property_hash.get('captResponse')
+        cap_validation = captcha.submit( cap_challenge, cap_response, 
+          config.BLOG['recap_private_key'], '127.0.0.1' ) # TODO capture 'from IP'
+        if not cap_validation.is_valid: 
+          logging.info( "Invalid captcha: %s", cap_validation.error_code )
+          handler.error(401)      # Unauthorized
+          return
     if 'key' not in property_hash and 'thread' not in property_hash:
         handler.error(401)
         return
@@ -322,11 +326,7 @@ def render_article(handler, article):
             handler.response.headers['Content-Type'] = 'application/json'
             handler.response.out.write(article.to_json())
         else:
-            # Generate two parts of a captcha that will use
-            # display:none in between.  This step in the anti-spam
-            # war race due to the following article:
-            # http://techblog.tilllate.com/2008/07/20/ten-methods-to-obfuscate-e-mail-addresses-compared/
-            captcha = get_captcha(article.key())
+            recaptcha = captcha.displayhtml( config.BLOG['recap_public_key'] )
             two_columns = article.two_columns
             if two_columns is None:
                 two_columns = article.is_big()
@@ -338,8 +338,7 @@ def render_article(handler, article):
             page.render(handler, { "two_columns": two_columns,
                                    "allow_comments": allow_comments,
                                    "article": article,
-                                   "captcha1": captcha[:3],
-                                   "captcha2": captcha[3:6],
+                                   "captcha": recaptcha,
                                    "use_gravatars": config.BLOG['use_gravatars']
             })
     else:
