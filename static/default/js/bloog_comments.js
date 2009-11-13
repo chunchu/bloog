@@ -28,7 +28,7 @@ YAHOO.bloog.initComments = function() {
         $$('#commentDialog').removeClass('initialHide');
         YAHOO.bloog.commentEditor.setEditorHTML('<p>Comment goes here</p>');
         Recaptcha.create( $('recaptcha_pub_key').innerHTML, 
-          'recaptcha_container', { theme: "white" } );
+          'recaptcha_container', { theme: "clean" } );
         YAHOO.bloog.commentDialog.render();
         YAHOO.bloog.commentDialog.show();
         YAHOO.bloog.commentEditor.show();
