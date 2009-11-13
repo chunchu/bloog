@@ -326,7 +326,7 @@ def render_article(handler, article):
             handler.response.headers['Content-Type'] = 'application/json'
             handler.response.out.write(article.to_json())
         else:
-            recaptcha = captcha.displayhtml( config.BLOG['recap_public_key'] )
+            recaptcha = config.BLOG['recap_public_key']
             two_columns = article.two_columns
             if two_columns is None:
                 two_columns = article.is_big()

@@ -24,10 +24,9 @@
                 <strong>Please enter your comment here.</strong>
             </textarea>
             
-            <script type='text/javascript'>var RecaptchaOptions = { theme : 'white' };</script>
-            {{ captcha }}
+            <span id='recaptcha_pub_key' style='display:none'>{{ captcha }}</span>
+            <div id='recaptcha_container' />
         </form>
-        <p style='clear:both'></p>
     </div>
 </div>
 
@@ -35,5 +34,6 @@
 <!-- Load scripts if not already loaded due to admin interface -->
 <script type="text/javascript" src="http://yui.yahooapis.com/combo?{{yui_version}}/build/animation/animation-min.js&{{yui_version}}/build/connection/connection-min.js&{{yui_version}}/build/container/container-min.js&{{yui_version}}/build/menu/menu-min.js&{{yui_version}}/build/element/element-min.js&{{yui_version}}/build/button/button-min.js&{{yui_version}}/build/editor/editor-min.js"></script>
 {% endif %}
+<script type="text/javascript" src="http://api.recaptcha.net/js/recaptcha_ajax.js"></script>
 <script type="text/javascript" src="/static/default/js/bloog_comments.js"></script>
 

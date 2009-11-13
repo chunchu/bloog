@@ -27,6 +27,8 @@ YAHOO.bloog.initComments = function() {
     var showRTE = function(e) {
         $$('#commentDialog').removeClass('initialHide');
         YAHOO.bloog.commentEditor.setEditorHTML('<p>Comment goes here</p>');
+        Recaptcha.create( $('recaptcha_pub_key').innerHTML, 
+          'recaptcha_container', { theme: "white" } );
         YAHOO.bloog.commentDialog.render();
         YAHOO.bloog.commentDialog.show();
         YAHOO.bloog.commentEditor.show();
