@@ -133,10 +133,6 @@ def get_html(body, markup_type):
         return textile.textile(body)
     return body
 
-def get_captcha(key): # TODO there has to be a better way to do this :
-    logging.info( "Called CAPTCHA!!!!" )
-    return ("%X" % abs(hash(str(key) + config.BLOG['title'])))[:6]
-
 def get_sanitizer_func(handler, **kwargs):
     match_obj = re.match(r'.*;\s*charset=(?P<charset>[\w-]+)',  
                          handler.request.headers['CONTENT_TYPE'])
@@ -240,14 +236,14 @@ def process_comment_submission(handler, article):
          ('body', sanitize_comment),
          'key',
          'thread',    # If it's given, use it.  Else generate it.
-         'captChallenge',
-         'captResponse',
+         'recaptcha_challenge_field',#'captChallenge',
+         'recaptcha_response_field',#'captResponse',
          ('published', get_datetime)])
 
     # If we aren't administrator, abort if bad captcha
-    if True: #not users.is_current_user_admin():
-        cap_challenge = property_hash.get('captChallenge')
-        cap_response = property_hash.get('captResponse')
+    if not users.is_current_user_admin():
+        cap_challenge = property_hash.get('recaptcha_challenge_field') #captChallenge')
+        cap_response = property_hash.get('recaptcha_response_field') #captResponse')
         
         cap_validation = captcha.RecaptchaResponse(False)
         if cap_challenge and cap_response:
