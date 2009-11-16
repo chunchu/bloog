@@ -37,49 +37,29 @@ YAHOO.bloog.initComments = function() {
         YAHOO.bloog.commentEditor.show();
     }
 
-    var handleSuccess = function(o) {
+    var handleSuccess = function(action,o) {
         var response = o.responseText;
         // Insert the comment into the appropriate place then hide dialog.
-        parent_id = YAHOO.bloog.action.split('#')[1];
-        if (parent_id == '') {
-            // Should be inserted at top
+        parent_id = action.split('#')[1];
+        if (parent_id == '') // Should be inserted at top
             $$('#commentslist').insert(response, 'top');
-        }
-        else {
-            $$('#' + parent_id).insert(response, 'after');
-        }
+        else $$('#' + parent_id).insert(response, 'after');
+
         var num_comments = Number($('num_comments').innerHTML) + 1;
         $$('#num_comments').setContent(String(num_comments));
         YAHOO.bloog.commentEditor.hide();
         YAHOO.bloog.commentDialog.hide();
     }
     var handleFailure = function(o) {
-        alert("Sorry, could not save comment!");
+        alert("Sorry, could not save your comment!");
     }
     var handleSubmit = function() {
         YAHOO.bloog.commentEditor.saveHTML();
-        var html = YAHOO.bloog.commentEditor.getEditorHTML();
-        var captResp = $('recaptcha_response_field').value;
-        var captChallenge = $('recaptcha_challenge_field').value;
-        var name = $('commentName').value;
-        var email = $('commentEmail').value;
-        var homepage = $('commentHomepage').value;
-        var title = $('commentTitle').value;
-        // Key needs to be transmitted because fragment doesn't seem to make
-        //  it through webob request object.
-        var postData = 'key=' + encodeURIComponent(YAHOO.bloog.action) + 
-                       '&captChallenge=' + encodeURIComponent(captChallenge) + 
-                       '&captResponse=' + encodeURIComponent(captResp) + 
-                       '&name=' + encodeURIComponent(name) + 
-                       '&email=' + encodeURIComponent(email) + 
-                       '&homepage=' + encodeURIComponent(homepage) + 
-                       '&title=' + encodeURIComponent(title) + 
-                       '&body=' + encodeURIComponent(html);
+        var postData = $$.Forms.getQueryString($('commentDialogForm'));
+        var action = $('commentDialogForm').action;
         var cObj = YAHOO.util.Connect.asyncRequest(
-            'POST', 
-            YAHOO.bloog.action, 
-            { success: handleSuccess, 
-              failure: handleFailure },
+            'POST', action, 
+            { success: handleSuccess.partial(action), failure: handleFailure },
             postData);
     }
     
@@ -94,6 +74,7 @@ YAHOO.bloog.initComments = function() {
                          isDefault:true },
                        { text: "Cancel", handler: YAHOO.bloog.handleCancel } ]
         });
+        
     YAHOO.bloog.commentDialog.validate = function () {
         var data = this.getData();
         if (data.commentName == "") {
@@ -101,10 +82,10 @@ YAHOO.bloog.initComments = function() {
             return false;
         }
         return true;
-    }
+    };
     var handleDialogSuccess = function() {
-        alert("We are having success from commentDialog");
-    }
+        alert("Success from commentDialog");
+    };
     YAHOO.bloog.commentDialog.callback = { success: handleDialogSuccess, 
                                            failure: YAHOO.bloog.handleFailure };
 
@@ -149,7 +130,8 @@ YAHOO.bloog.initComments = function() {
     $$('div#comments_wrapper').on('click', Ojay.delegateEvent({
         'a.replybtn': function(link, e) {
             e.stopDefault();
-            YAHOO.bloog.action = link.node.href;
+            $('commentKey').value = link.node.href;
+            $('commentDialogForm').action = link.node.href;
             showRTE(link.node);
         }
     }));

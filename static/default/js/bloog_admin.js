@@ -89,7 +89,7 @@ YAHOO.bloog.initAdmin = function() {
     
     var handleSubmit = function() {
         YAHOO.bloog.editor.saveHTML();
-        var html = YAHOO.bloog.editor.get('element').value;
+        var html = YAHOO.bloog.editor.getEditorHTML();
         var title = $('postTitle').value;
         var tags = $('postTags').value;
         var publishDt = $('postDate').value;
