@@ -327,6 +327,7 @@ def render_article(handler, article):
         if accept_list and accept_list.split(',')[0] == 'application/json':
             handler.response.headers['Content-Type'] = 'application/json'
             handler.response.out.write(article.to_json())
+            return
         else:
             recaptcha = config.BLOG['recap_public_key']
             two_columns = article.two_columns
@@ -337,9 +338,11 @@ def render_article(handler, article):
                 age = (datetime.datetime.now() - article.published).days
                 allow_comments = (age <= config.BLOG['days_can_comment'])
             page = view.ViewPage()
+            title = "%s :: %s" %  ( article.title, config.BLOG['title'] )
             page.render(handler, { "two_columns": two_columns,
                                    "allow_comments": allow_comments,
                                    "article": article,
+                                   "title": title,
                                    "captcha": recaptcha,
                                    "use_gravatars": config.BLOG['use_gravatars']
             })
