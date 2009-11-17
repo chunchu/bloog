@@ -9,28 +9,36 @@
     <div class="hd">Post Editor</div>
     <div class="bd">
         <form id="postDialogForm" name="postDialogForm" method="post" action="#">
-            <br />
-            <p>
-                <label for="postTitle">Title:</label><br />
-                <input type="text" id="postTitle" name="postTitle" size="50"></input>
-            </p>
-            <p>
+            <div class='p'>
               <div class='row left'>
+                <label for="postTitle">Title:</label><br />
+                <input type="text" id="postTitle" name="title" size="50"></input>
+              </div>
+              <div class='row right'>
                 <label for="postTags">Tags:</label><br />
-                <input type="text" id="postTags" name="postTags" size="50"></input><br />
+                <input type="text" id="postTags" name="tags" size="50"></input><br />
                 <sup><em>Separate tags with commas</em></sup>
               </div>
-              <div class='row'>
-                <label for='postDate'>Publish Date:</label><br />
-                <div id='postDateContainer'></div>
-                <input type='text' id='postDate' name='postDate' size="20"></input>
+            </div>
+            <div class='p'>
+              <em><a href='#' id='moreOptionsLink'>More Options...</a></em>
+              <div id='moreOptionsContainer' style='display:none'>
+                <div class='row left'>
+                  <label for='postDate'>Publish Date:</label><br />
+                  <div id='postDateContainer'></div>
+                  <input type='text' id='postDate' name='published' size="20"></input>
+                </div>
+                <div class='row'>
+                  <label for='legacyID'>Legacy ID mapping:</label><br />
+                  <input type='text' id='legacyID' name='legacy_id' size="20"></input>
+                </div>
               </div>
-            </p>
-            <textarea id="postBody" name="postBody" cols="50" rows="10">
+            </div>
+            <textarea id="postBody" name="body" cols="50" rows="10">
                 <strong>Please enter your text here.</strong>
                 <p>It will be sent to the server on submit.</p>
             </textarea>
-            <input type="hidden" name="postFormat" value="html" />
+            <input type="hidden" name="format" value="html" />
         </form>
     </div>
 </div>

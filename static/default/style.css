@@ -34,13 +34,15 @@ th,td{padding:3px 20px 3px 0px;}
 
 .popupDialog div.bd{text-align:center;}
 .popupDialog form{text-align: left;}
-.popupDialog form p{margin-bottom:7px;}
+.popupDialog form p, .popupDialog form div.p{margin-bottom:7px;}
 .popupDialog form label{width: 400px;}
 .popupDialog form input{width: 400px;}
 .popupDialog form .row.left { float: left; margin-right: 20px }
-.popupDialog form .row label{width: 170px;}
-.popupDialog form .row input{width: 170px;}
+.popupDialog form .row.right { margin-left: 250px; float:none }
+.popupDialog form .row label{width: 230px;}
+.popupDialog form .row input{width: 230px;}
 .popupDialog form textarea{width: 400px; margin:0px 5px;}
+.popupDialog a { background: transparent url(images/dot.gif) repeat-x scroll left bottom }
 #postBody_container {clear:both}
 #postDateContainer { position: absolute; z-index: 2; display:none }
 

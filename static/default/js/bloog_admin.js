@@ -66,6 +66,7 @@ YAHOO.bloog.initAdmin = function() {
         $("postTitle").value = article.title;
         if (article.tags) $("postTags").value = article.tags.join(', ');
         $("postDate").value = article.published;
+        $('legacyID').value = article.legacy_id;
         YAHOO.bloog.editor.setEditorHTML( article.body );
         YAHOO.bloog.postDialog.render();
         YAHOO.bloog.postDialog.show();
@@ -90,13 +91,7 @@ YAHOO.bloog.initAdmin = function() {
     var handleSubmit = function() {
         YAHOO.bloog.editor.saveHTML();
         var html = YAHOO.bloog.editor.getEditorHTML();
-        var title = $('postTitle').value;
-        var tags = $('postTags').value;
-        var publishDt = $('postDate').value;
-        var postData = 'title=' + encodeURIComponent(title) + 
-                       '&tags=' + encodeURIComponent(tags) + 
-                       '&published=' + encodeURIComponent(publishDt) +
-                       '&body=' + encodeURIComponent(html) ;
+        var postData = $$.Forms.getQueryString($('postDialogForm'));
         var cObj = YAHOO.util.Connect.asyncRequest(
             YAHOO.bloog.http.verb, 
             YAHOO.bloog.http.action, 
@@ -303,6 +298,13 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.on("newblog", "click", showRTE);
     YAHOO.util.Event.on("editbtn", "click", showRTE);
     YAHOO.util.Event.on("deletebtn", "click", function (e) { YAHOO.bloog.deleteDialog.show(); });
+    
+    $$('#moreOptionsLink').on('click',function(link,e) {
+      var moreOptions = $('moreOptionsContainer');
+      moreOptions.style.display = ( moreOptions.style.display== 'none' ? 
+        'block' : 'none' );
+      e.stopDefault();
+    });
 };
 
 Ojay.onDOMReady( YAHOO.bloog.initAdmin );
