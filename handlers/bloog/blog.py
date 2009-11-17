@@ -67,25 +67,26 @@ import legacy_aliases   # This can be either manually created or
 # Functions to generate permalinks depending on type of article
 permalink_funcs = {
     'article': lambda title,date: get_friendly_url(title),
-    'blog entry': lambda title,date: str(date.year) + "/" + \
-                        str(date.month) + "/" + get_friendly_url(title)
+    'blog entry': lambda title,date: "%d/%02d/%s" % (date.year, date.month, get_friendly_url(title))
 }
 
 # We allow a mapping from some old url pattern to the current query 
 #  using a regex's matched string.
 def legacy_id_mapping(path, legacy_program):
     if legacy_program:
+        legacy_id= None
         if legacy_program == 'Drupal':
             url_match = re.match('node/(\d+)/?$', path)
-            if url_match:
-                return db.Query(models.blog.Article). \
-                    filter('legacy_id =', url_match.group(1)). \
-                    get()
+            if url_match: legacy_id= url_match.group(1)
         elif legacy_program == 'Serendipity':
             url_match = re.match('archives/(\d+)-.*\.html$', path)
-            if url_match:
-                return db.Query(models.blog.Article). \
-                    filter('legacy_id =', url_match.group(1)).get()
+            if url_match: legacy_id= url_match.group(1)
+        elif legacy_program == 'Blogger':
+            url_match = re.match('(\d+/\d+/[\w-]+).html$',path)
+            if url_match: legacy_id= url_match.group(0)
+
+        if legacy_id: return db.Query(models.blog.Article) \
+            .filter('legacy_id =', legacy_id ).get()
     return None
 
 # Module methods to handle incoming data
@@ -123,9 +124,8 @@ def get_tags(tags_string):
     return None
     
 def get_friendly_url(title):
-    return re.sub('-+', '-', 
-                  re.sub('[^\w-]', '', 
-                         re.sub('\s+', '-', title.strip())))
+    return re.sub('-+', '-', re.sub('[^\w-]', '', 
+                   re.sub('\s+', '-', title.strip().lower())))
 
 def get_html(body, markup_type):
     if markup_type == 'textile':
@@ -169,6 +169,8 @@ def process_article_edit(handler, permalink):
          ('body', get_sanitizer_func(handler, trusted_source=True)),
          ('format', get_format),
          ('updated', get_datetime),
+         ('published', get_datetime),
+         'legacy_id',
          ('tags', get_tags),
          ('html', get_html, 'body', 'format')])
 
@@ -236,8 +238,8 @@ def process_comment_submission(handler, article):
          ('body', sanitize_comment),
          ('key', cgi.escape),
          'thread',    # If it's given, use it.  Else generate it.
-         'recaptcha_challenge_field',#'captChallenge',
-         'recaptcha_response_field',#'captResponse',
+         'recaptcha_challenge_field',
+         'recaptcha_response_field',
          ('published', get_datetime)])
 
     # If we aren't administrator, abort if bad captcha
@@ -476,9 +478,17 @@ class BlogEntryHandler(restful.Controller):
         logging.debug("BlogEntryHandler#get for year %s, "
                       "month %s, and perm_link %s", 
                       year, month, perm_stem)
+        permalink = '%s/%s/%s' % (year, month, perm_stem)
         article = db.Query(models.blog.Article). \
-                     filter('permalink =', 
-                            year + '/' + month + '/' + perm_stem).get()
+                     filter('permalink =', permalink).get()
+
+        if not article: # we could have a legacy URL that matches our blog mapping pattern (e.g. blogger)
+            article = legacy_id_mapping( 
+                permalink, config.BLOG["legacy_blog_software"] )
+            if article and config.BLOG["legacy_entry_redirect"]:
+                self.redirect('/' + article.permalink)
+                return
+
         render_article(self, article)
 
     @restful.methods_via_query_allowed    
@@ -489,7 +499,7 @@ class BlogEntryHandler(restful.Controller):
                      filter('permalink =', permalink).get()
         if article:
             process_comment_submission(self, article)
-        else:
+        else: # no article found for comment
             logging.debug("No article attached to submitted comment")
             self.error(400)
 
@@ -594,13 +604,13 @@ class AtomHandler(webapp.RequestHandler):
                            "articles": articles, "ext": "xml"})
 
 class SitemapHandler(webapp.RequestHandler):
-	def get(self):
-		logging.debug("Sending Sitemap")
-		articles = db.Query(models.blog.Article).order('-published').fetch(1000)
-		if articles:
-			self.response.headers['Content-Type'] = 'text/xml'
-			page = view.ViewPage()
-			page.render(self, {
+  def get(self):
+    logging.debug("Sending Sitemap")
+    articles = db.Query(models.blog.Article).order('-published').fetch(1000)
+    if articles:
+      self.response.headers['Content-Type'] = 'text/xml'
+      page = view.ViewPage()
+      page.render(self, {
           "articles": articles,
           "ext": "xml",
           "root_url": config.BLOG['root_url']
