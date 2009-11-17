@@ -14,7 +14,7 @@ logging.info("Starting application in DEBUG mode: %s", DEBUG)
 
 BLOG = {
     "bloog_version": "0.8",
-    "html_type": "text/html",
+    "html_type": "application/xhtml+xml",
     "charset": "utf-8",
     "title": "Thom Nichols",
     "author": "Thom Nichols",
@@ -50,20 +50,23 @@ BLOG = {
     # define it here and insert the necessary mapping code in the
     # legacy_id_mapping() function in ArticleHandler (blog.py).
     # Currently only "Drupal" is supported.
-    "legacy_blog_software": None,
+    #"legacy_blog_software": None,
     #"legacy_blog_software": "Drupal",
-    #"legacy_blog_software": "Serendipity",
+    "legacy_blog_software": "Blogger",
     
     # If you want imported legacy entries _not_ mapped in the file above to
     # redirect to their new permanent URL rather than responding on their
     # old URL, set this flag to True.
-    "legacy_entry_redirect": False,
+    "legacy_entry_redirect": True,
 }
 
 PAGE = {
     "title": BLOG["title"],
     "articles_per_page": 5,
-    "yui_version":'2.8.0r4',
+    "yui_version": '2.8.0r4',
+    "author_name": 'Thom',
+    "author_email": BLOG['email'],
+    "ga_tracker": "", # Google Analytics tracker code
     "navlinks": [
         { "title": "Articles", "description": "Bits of Info", 
           "url": "/articles"},
@@ -72,7 +75,7 @@ PAGE = {
     ],
     "featuredMyPages": {
         "title": "About Me",
-        "description": """I'm a software Engineer living near Providence, RI. &nbsp;
+        "description": """I'm a Software Engineer living near Providence, RI. &nbsp;
           I code for work, freelance, and when an idea strikes me, sometimes 
           just for fun.""",
         "entries": [

@@ -261,5 +261,15 @@
 
         {% block end_body %}
         {% endblock %}
+        
+        {% if ga_tracker %}
+        <script type="text/javascript">
+        var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+        document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+        </script>
+        <script type="text/javascript">
+        try{ _gat._getTracker("{{ ga_tracker }}")._trackPageview(); } catch(e) {}
+        </script>
+        {% endif %}
     </body>
 </html>
