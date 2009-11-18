@@ -439,20 +439,20 @@ class ArticleHandler(restful.Controller):
         logging.debug("ArticleHandler#delete on %s", path)
 
         def delete_entity(query):
-            targets = query.fetch(limit=1)
-            if len(targets) > 0:
-                if hasattr(targets[0], 'title'):
-                    title = targets[0].title
-                elif hasattr(targets[0], 'name'):
-                    title = targets[0].name
+            target = query.get()
+            if target:
+                if hasattr(target, 'title'):
+                    title = target.title
+                elif hasattr(target, 'name'):
+                    title = target.name
                 else:
                     title = ''
                 logging.debug('Deleting %s %s', model_class, title)
-                targets[0].delete()
-                self.response.out.write('Deleted ' + model_class + ' ' + title)
+                target.delete()
+                self.response.out.write('Deleted %s %s' % (model_class, title))
                 view.invalidate_cache()
             else:
-                self.response.set_status(204, 'No more ' + model_class + ' entities')
+                self.response.set_status(204, 'No more %s entities' % (model_class,))
                 
         if model_class == 'article':
             query = models.blog.Article.all()
