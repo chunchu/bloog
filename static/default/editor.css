@@ -1,73 +1,85 @@
 /* CSS for YUI Editor used in Bloog */
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-pythonbtn span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-python span.yui-toolbar-icon {
   background-image: url(/static/default/images/py.gif);
   background-position: 1px 0px;
   left: 5px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-pythonbtn-selected span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-python-selected span.yui-toolbar-icon {
   background-image: url(/static/default/images/py.gif);
   background-position: 1px 0px;
   left: 5px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-groovybtn span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-groovy span.yui-toolbar-icon {
   background-image: url(/static/default/images/groovy.gif);
   background-position: 0px 0px;
   left: 2px;
   width: 24px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-groovybtn-selected span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-groovy-selected span.yui-toolbar-icon {
   background-image: url(/static/default/images/groovy.gif);
   background-position: 0px 0px;
   left: 2px;
   width: 24px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-jsbtn span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-js span.yui-toolbar-icon {
   background-image: url(/static/default/images/js.gif);
   background-position: 1px 0px;
   left: 5px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-jsbtn-selected span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-js-selected span.yui-toolbar-icon {
   background-image: url(/static/default/images/js.gif);
   background-position: 1px 0px;
   left: 5px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-javabtn span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-java span.yui-toolbar-icon {
   background-image: url(/static/default/images/java.gif);
   background-position: 0px 0px;
   left: 3px;
   width: 22px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-javabtn-selected span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-java-selected span.yui-toolbar-icon {
   background-image: url(/static/default/images/java.gif);
   background-position: 0px 0px;
   left: 3px;
   width: 22px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-htmlbtn span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-html span.yui-toolbar-icon {
   background-image: url(/static/default/images/html.gif);
   background-position: 0px 0px;
   left: 2px;
   width: 24px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-htmlbtn-selected span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-html-selected span.yui-toolbar-icon {
   background-image: url(/static/default/images/html.gif);
   background-position: 1px 0px;
   left: 5px;
 }
 
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-cssbtn span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-css span.yui-toolbar-icon {
   background-image: url(/static/default/images/css.gif);
   background-position: 0px 0px;
   left: 3px;
   width: 22px;
 }
-.yui-skin-sam .yui-toolbar-container .yui-toolbar-cssbtn-selected span.yui-toolbar-icon {
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-css-selected span.yui-toolbar-icon {
   background-image: url(/static/default/images/css.gif);
   background-position: 0px 0px;
   left: 3px;
   width: 22px;
+}
+
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-code span.yui-toolbar-icon {
+  background-image: url(/static/default/images/code.gif);
+  background-position: 0px 0px;
+  left: 2px;
+  width: 26px;
+}
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-code-selected span.yui-toolbar-icon {
+  background-image: url(/static/default/images/code.gif);
+  background-position: 1px 0px;
+  left: 5px;
 }

@@ -138,6 +138,7 @@ YAHOO.bloog.initAdmin = function() {
                         { type: 'push', label: 'Bold CTRL + SHIFT + B', value: 'bold' },
                         { type: 'push', label: 'Italic CTRL + SHIFT + I', value: 'italic' },
                         { type: 'push', label: 'Underline CTRL + SHIFT + U', value: 'underline' },
+                        { type: 'push', label: 'Code CTRL + SHIFT + C', value: 'code' },
                         { type: 'separator' },
                         { type: 'push', label: 'Subscript', value: 'subscript', disabled: true },
                         { type: 'push', label: 'Superscript', value: 'superscript', disabled: true },
@@ -184,11 +185,11 @@ YAHOO.bloog.initAdmin = function() {
                 { type: 'separator' },
                 { group: 'insertcode', label: 'Insert Code',
                     buttons: [
-                    { type: 'push', label: 'Python', value: 'pythonbtn', disabled: false },
-                    { type: 'push', label: 'Javascript', value: 'jsbtn', disabled: false },
-                    { type: 'push', label: 'Groovy', value: 'groovybtn', disabled: false },
-                    { type: 'push', label: 'XML/HTML', value: 'htmlbtn', disabled: false },
-                    { type: 'push', label: 'CSS', value: 'cssbtn', disabled: false },
+                    { type: 'push', label: 'Python', value: 'python', disabled: false },
+                    { type: 'push', label: 'Javascript', value: 'js', disabled: false },
+                    { type: 'push', label: 'Groovy', value: 'groovy', disabled: false },
+                    { type: 'push', label: 'XML/HTML', value: 'html', disabled: false },
+                    { type: 'push', label: 'CSS', value: 'css', disabled: false },
                     ]
                 },
                 { type: 'separator' },
@@ -209,35 +210,56 @@ YAHOO.bloog.initAdmin = function() {
         // Now listen for the new buttons click and do something with it.
         // Note that the clicks are events synthesized for us automatically
         // because those are the values we gave our buttons above:
-        this.toolbar.on('pythonbtnClick', function(o) {
+        this.toolbar.on('pythonClick', function(o) {
             this.execCommand('inserthtml', '<p></p><pre class="brush: python"># Python code here</pre><p></p>');
         }, YAHOO.bloog.editor, true);
-        this.toolbar.on('jsbtnClick', function(o) {
+        this.toolbar.on('jsClick', function(o) {
             this.execCommand('inserthtml', '<p></p><pre class="brush: js">// Javascript code here</pre><p></p>');
         }, YAHOO.bloog.editor, true);
-        this.toolbar.on('groovybtnClick', function(o) {
+        this.toolbar.on('groovyClick', function(o) {
             this.execCommand('inserthtml', '<p></p><pre class="brush: groovy">// Groovy code here</pre><p></p>');
         }, YAHOO.bloog.editor, true);
-        this.toolbar.on('cssbtnClick', function(o) {
+        this.toolbar.on('cssClick', function(o) {
             this.execCommand('inserthtml', '<p></p><pre class="brush: css">/* CSS code here */</pre><p></p>');
         }, YAHOO.bloog.editor, true);
-        this.toolbar.on('htmlbtnClick', function(o) {
+        this.toolbar.on('htmlClick', function(o) {
             this.execCommand('inserthtml', '<p></p><pre class="brush: html">&lt;!-- XML/HTML code here --></pre><p></p>');
         }, YAHOO.bloog.editor, true);
-        /**
+        
+        this.toolbar.on('codeClick', function() { this.execCommand('code'); } );
+        this.cmd_code = function() { // TODO 
+          if ( this._hasSelection() ) {
+            var code = this._createCurrentElement('code');
+            this._selectNode(this.currentElement[0]);
+          }
+          else this.execCommand('inserthtml', '<code>&nbsp;</code>');
+          return [true];
+        };
         //Setup the button to be enabled, disabled or selected
-        this.on('afterNodeChange', function(o) {
-            //Get the selected element
-            var el = this._getSelectedElement();
-
-            //Get the button we want to manipulate
-            var button = this.toolbar.getButtonByValue('pythonbtn');
-
-            if (el && el.tagName == 'div') {
-                this.toolbar.enableButton(button);
+        this.on('afterNodeChange', function() { 
+            
+            if ( this._hasSelection() ) {
+              this.toolbar.disableButton(this.toolbar.getButtonByValue('python'));
+              this.toolbar.disableButton(this.toolbar.getButtonByValue('groovy'));
+              this.toolbar.disableButton(this.toolbar.getButtonByValue('html'));
+              this.toolbar.disableButton(this.toolbar.getButtonByValue('css'));
+              this.toolbar.disableButton(this.toolbar.getButtonByValue('js'));
             }
-        }, this, true);
-        **/
+            var el = this._getSelectedElement();
+            if ( ! el ) return;
+            var val;
+            if ( el.tagName == 'CODE' ) val = 'code';
+            el = Ojay(el);
+            if ( el.hasClass('brush:') ) {
+              if ( el.hasClass('html') ) val = 'html';
+              else if ( el.hasClass('python') ) val = 'python';
+              else if ( el.hasClass('groovy') ) val = 'groovy';
+              else if ( el.hasClass('java') ) val = 'java';
+              else if ( el.hasClass('css') ) val = 'css';
+            }
+            if ( ! val ) return;
+            this.toolbar.selectButton(this.toolbar.getButtonByValue(val));
+        },this,true);
     }, YAHOO.bloog.editor, true);
     YAHOO.bloog.editor.render();
     
