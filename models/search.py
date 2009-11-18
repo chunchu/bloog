@@ -17,17 +17,6 @@
 
 """Full text indexing and search, implemented in pure python.
 
-Note: This code is slightly altered from google.appengine.ext.search.
-  The original code has timeout/quota problems when running in the
-  cloud.  
-  
-Changes by Bill Katz on original:
-  - Brought Query out from SearchableModel and renamed it FullTextQuery 
-    due to issues with scoping (?) and online shell app.
-  - Added unsearchable_properties class variable that lets you remove
-    string-based properties from indexing.
-  - Don't index over code inside pre with name 'code'.
-
 Defines a SearchableModel subclass of db.Model that supports full text
 indexing and search, based on the datastore's existing indexes.
 
@@ -57,6 +46,40 @@ orders, e.g.:
 
 The full text index is stored in a property named __searchable_text_index.
 
+Specifying multiple indexes and properties to index
+---------------------------------------------------
+
+By default, one index is created with all string properties. You can define
+multiple indexes and specify which properties should be indexed for each by
+overriding SearchableProperties() method of model.SearchableModel, for example:
+
+  class Article(search.SearchableModel):
+    @classmethod
+    def SearchableProperties(cls):
+      return [['book', 'author'], ['book']]
+
+In this example, two indexes will be maintained - one that includes 'book' and
+'author' properties, and another one for 'book' property only. They will be
+stored in properties named __searchable_text_index_book_author and
+__searchable_text_index_book respectively. Note that the index that includes
+all properties will not be created unless added explicitly like this:
+
+  @classmethod
+  def SearchableProperties(cls):
+    return [['book', 'author'], ['book'], search.ALL_PROPERTIES]
+
+The default return value of SearchableProperties() is [search.ALL_PROPERTIES]
+(one index, all properties).
+
+To search using a custom-defined index, pass its definition
+in 'properties' parameter of 'search':
+
+  Article.all().search('Lem', properties=['book', 'author'])
+
+Note that the order of properties in the list matters.
+
+Adding indexes to  index.yaml
+-----------------------------
 
 In general, if you just want to provide full text search, you *don't* need to
 add any extra indexes to your index.yaml. However, if you want to use search()
@@ -71,13 +94,18 @@ example:
       direction: desc
     ...
 
+Similarly, if you created a custom index (see above), use the name of the
+property it's stored in, e.g. __searchable_text_index_book_author.
+
 Note that using SearchableModel will noticeable increase the latency of save()
 operations, since it writes an index row for each indexable word. This also
 means that the latency of save() will increase roughly with the size of the
 properties in a given entity. Caveat hacker!
 """
 
-import logging
+
+
+
 import re
 import string
 import sys
@@ -88,6 +116,8 @@ from google.appengine.api import datastore_types
 from google.appengine.ext import db
 from google.appengine.datastore import datastore_pb
 
+ALL_PROPERTIES = []
+
 class SearchableEntity(datastore.Entity):
   """A subclass of datastore.Entity that supports full text indexing.
 
@@ -95,13 +125,9 @@ class SearchableEntity(datastore.Entity):
   built-in per-property indices. To search, use the SearchableQuery class and
   its Search() method.
   """
-  # Note that AppEngine servers will cache all imported modules including
-  # the interior of a class definition.  So the following _FULL_TEXT_*
-  # properties will be executed once and cached.
-
   _FULL_TEXT_INDEX_PROPERTY = '__searchable_text_index'
 
-  _FULL_TEXT_MIN_LENGTH = 4
+  _FULL_TEXT_MIN_LENGTH = 3
 
   _FULL_TEXT_STOP_WORDS = frozenset([
    'a', 'about', 'according', 'accordingly', 'affected', 'affecting', 'after',
@@ -135,9 +161,12 @@ class SearchableEntity(datastore.Entity):
    'where', 'whether', 'which', 'while', 'who', 'whose', 'why', 'widely',
    'will', 'with', 'within', 'without', 'would', 'yet', 'you'])
 
-  _PUNCTUATION_REGEX = re.compile('[' + re.escape(string.punctuation) + ']')
+  _word_delimiter_regex = re.compile('[' + re.escape(string.punctuation) + ']')
 
-  def __init__(self, kind_or_entity, *args, **kwargs):
+  _searchable_properties = [ALL_PROPERTIES]
+
+  def __init__(self, kind_or_entity, word_delimiter_regex=None, *args,
+               **kwargs):
     """Constructor. May be called as a copy constructor.
 
     If kind_or_entity is a datastore.Entity, copies it into this Entity.
@@ -150,9 +179,15 @@ class SearchableEntity(datastore.Entity):
 
     Args:
       kind_or_entity: string or datastore.Entity
+      word_delimiter_regex: a regex matching characters that delimit words
     """
+    self._word_delimiter_regex = word_delimiter_regex
     if isinstance(kind_or_entity, datastore.Entity):
       self._Entity__key = kind_or_entity._Entity__key
+      self._Entity__unindexed_properties = frozenset(kind_or_entity.unindexed_properties())
+      if isinstance(kind_or_entity, SearchableEntity):
+        if getattr(kind_or_entity, '_searchable_properties', None) is not None:
+          self._searchable_properties = kind_or_entity._searchable_properties
       self.update(kind_or_entity)
     else:
       super(SearchableEntity, self).__init__(kind_or_entity, *args, **kwargs)
@@ -163,27 +198,38 @@ class SearchableEntity(datastore.Entity):
     Returns:
       entity_pb.Entity
     """
-    if SearchableEntity._FULL_TEXT_INDEX_PROPERTY in self:
-      del self[SearchableEntity._FULL_TEXT_INDEX_PROPERTY]
+    for properties_to_index in self._searchable_properties:
+      index_property_name = SearchableEntity.IndexPropertyName(properties_to_index)
+      if index_property_name in self:
+        del self[index_property_name]
 
-    index = set()
-    searchable = lambda (name, value): name not in self.unsearchable_properties
-    for (name, values) in filter(searchable, self.items()):
-      if not isinstance(values, list):
-        values = [values]
-      if (isinstance(values[0], basestring) and
-          not isinstance(values[0], datastore_types.Blob)):
-        for value in values:
-          index.update(SearchableEntity._FullTextIndex(value))
 
-    index_list = list(index)
-    if index_list:
-      self[SearchableEntity._FULL_TEXT_INDEX_PROPERTY] = index_list
+      if not properties_to_index:
+        properties_to_index = self.keys()
+
+      index = set()
+      for name in properties_to_index:
+        if not self.has_key(name):
+          continue
+
+        values = self[name]
+        if not isinstance(values, list):
+          values = [values]
+
+        if (isinstance(values[0], basestring) and
+            not isinstance(values[0], datastore_types.Blob)):
+          for value in values:
+            index.update(SearchableEntity._FullTextIndex(
+                value, self._word_delimiter_regex))
+
+      index_list = list(index)
+      if index_list:
+        self[index_property_name] = index_list
 
     return super(SearchableEntity, self)._ToPb()
 
   @classmethod
-  def _FullTextIndex(cls, text):
+  def _FullTextIndex(cls, text, word_delimiter_regex=None):
     """Returns a set of keywords appropriate for full text indexing.
 
     See SearchableQuery.Search() for details.
@@ -195,14 +241,15 @@ class SearchableEntity(datastore.Entity):
       set of strings
     """
 
+    if word_delimiter_regex is None:
+      word_delimiter_regex = cls._word_delimiter_regex
+
     if text:
       datastore_types.ValidateString(text, 'text', max_len=sys.maxint)
-      # TODO -- Remove embedded code blogs marked by 'pre' tags
-      # and name="code"
-      text = cls._PUNCTUATION_REGEX.sub(' ', text)
+      text = word_delimiter_regex.sub(' ', text)
       words = text.lower().split()
 
-      words = set(words)
+      words = set(unicode(w) for w in words)
 
       words -= cls._FULL_TEXT_STOP_WORDS
       for word in list(words):
@@ -214,6 +261,16 @@ class SearchableEntity(datastore.Entity):
 
     return words
 
+  @classmethod
+  def IndexPropertyName(cls, properties):
+    """Given index definition, returns the name of the property to put it in."""
+    name = SearchableEntity._FULL_TEXT_INDEX_PROPERTY
+
+    if properties:
+      name += '_' + '_'.join(properties)
+
+    return name
+
 
 class SearchableQuery(datastore.Query):
   """A subclass of datastore.Query that supports full text search.
@@ -222,7 +279,8 @@ class SearchableQuery(datastore.Query):
   SearchableEntity or SearchableModel classes.
   """
 
-  def Search(self, search_query):
+  def Search(self, search_query, word_delimiter_regex=None,
+             properties=ALL_PROPERTIES):
     """Add a search query. This may be combined with filters.
 
     Note that keywords in the search query will be silently dropped if they
@@ -237,83 +295,114 @@ class SearchableQuery(datastore.Query):
     """
     datastore_types.ValidateString(search_query, 'search query')
     self._search_query = search_query
+    self._word_delimiter_regex = word_delimiter_regex
+    self._properties = properties
     return self
 
-  def _ToPb(self, limit=None, offset=None):
+  def _ToPb(self, *args, **kwds):
     """Adds filters for the search query, then delegates to the superclass.
 
-    Raises BadFilterError if a filter on the index property already exists.
-
-    Args:
-      # an upper bound on the number of results returned by the query.
-      limit: int
-      # number of results that match the query to skip.  limit is applied
-      # after the offset is fulfilled.
-      offset: int
+    Mimics Query._ToPb()'s signature. Raises BadFilterError if a filter on the
+    index property already exists.
 
     Returns:
       datastore_pb.Query
     """
-    if SearchableEntity._FULL_TEXT_INDEX_PROPERTY in self:
-      raise datastore_errors.BadFilterError(
-        '%s is a reserved name.' % SearchableEntity._FULL_TEXT_INDEX_PROPERTY)
 
-    pb = super(SearchableQuery, self)._ToPb(limit=limit, offset=offset)
+    properties = getattr(self, "_properties", ALL_PROPERTIES)
+
+    index_property_name = SearchableEntity.IndexPropertyName(properties)
+    if index_property_name in self:
+      raise datastore_errors.BadFilterError(
+        '%s is a reserved name.' % index_property_name)
+
+    pb = super(SearchableQuery, self)._ToPb(*args, **kwds)
 
     if hasattr(self, '_search_query'):
-      keywords = SearchableEntity._FullTextIndex(self._search_query)
+      keywords = SearchableEntity._FullTextIndex(
+          self._search_query, self._word_delimiter_regex)
       for keyword in keywords:
         filter = pb.add_filter()
         filter.set_op(datastore_pb.Query_Filter.EQUAL)
         prop = filter.add_property()
-        prop.set_name(SearchableEntity._FULL_TEXT_INDEX_PROPERTY)
-        prop.mutable_value().set_stringvalue(keyword)
+        prop.set_name(index_property_name)
+        prop.set_multiple(len(keywords) > 1)
+        prop.mutable_value().set_stringvalue(unicode(keyword).encode('utf-8'))
 
     return pb
 
-class FullTextQuery(db.Query):
-  """A subclass of db.Query that supports full text search."""
-  _search_query = None
 
-  def search(self, search_query):
-    """Adds a full text search to this query.
+class SearchableMultiQuery(datastore.MultiQuery):
+  """A multiquery that supports Search() by searching subqueries."""
+
+  def Search(self, *args, **kwargs):
+    """Add a search query, by trying to add it to all subqueries.
 
     Args:
-      search_query, a string containing the full text search query.
+      args: Passed to Search on each subquery.
+      kwargs: Passed to Search on each subquery.
 
     Returns:
-      self
+      self for consistency with SearchableQuery.
     """
-    self._search_query = search_query
+    for q in self:
+      q.Search(*args, **kwargs)
     return self
 
-  def _get_query(self):
-    """Wraps db.Query._get_query() and injects SearchableQuery."""
-    query = db.Query._get_query(self, _query_class=SearchableQuery)
-    if self._search_query:
-      query.Search(self._search_query)
-    return query
 
-import models
-
-class SearchableModel(models.SerializableModel):
+class SearchableModel(db.Model):
   """A subclass of db.Model that supports full text search and indexing.
 
   Automatically indexes all string-based properties. To search, use the all()
-  method to get a FullTextQuery, then use its search() method.
-  
-  Looks for a class variable, unsearchable_properties, and if set, removes
-  indexing on those properties.  Note that only properties with string
-  base types are indexed in any case.
+  method to get a SearchableModel.Query, then use its search() method.
+
+  Override SearchableProperties() to define properties to index and/or multiple
+  indexes (see the file's comment).
   """
-  unsearchable_properties = []
+
+  @classmethod
+  def SearchableProperties(cls):
+    return [ALL_PROPERTIES]
+
+  class Query(db.Query):
+    """A subclass of db.Query that supports full text search."""
+    _search_query = None
+    _properties = None
+
+    def search(self, search_query, properties=ALL_PROPERTIES):
+      """Adds a full text search to this query.
+
+      Args:
+        search_query, a string containing the full text search query.
+
+      Returns:
+        self
+      """
+      self._search_query = search_query
+      self._properties = properties
+
+      if self._properties not in getattr(self, '_searchable_properties', [ALL_PROPERTIES]):
+        raise datastore_errors.BadFilterError(
+          '%s does not have a corresponding index. Please add it to'
+          'the SEARCHABLE_PROPERTIES list' % self._properties)
+
+      return self
+
+    def _get_query(self):
+      """Wraps db.Query._get_query() and injects SearchableQuery."""
+      query = db.Query._get_query(self,
+                                  _query_class=SearchableQuery,
+                                  _multi_query_class=SearchableMultiQuery)
+      if self._search_query:
+        query.Search(self._search_query, properties=self._properties)
+      return query
 
   def _populate_internal_entity(self):
     """Wraps db.Model._populate_internal_entity() and injects
     SearchableEntity."""
     entity = db.Model._populate_internal_entity(self,
-                                            _entity_class=SearchableEntity)
-    entity.unsearchable_properties = self.__class__.unsearchable_properties
+                                                _entity_class=SearchableEntity)
+    entity._searchable_properties = self.SearchableProperties()
     return entity
 
   @classmethod
@@ -325,5 +414,7 @@ class SearchableModel(models.SerializableModel):
 
   @classmethod
   def all(cls):
-    """Returns a FullTextQuery for this kind."""
-    return FullTextQuery(cls)
+    """Returns a SearchableModel.Query for this kind."""
+    query = SearchableModel.Query(cls)
+    query._searchable_properties = cls.SearchableProperties()
+    return query
