@@ -61,7 +61,7 @@ import urlparse
 import socket
 import string
 
-from utils.external import textile
+from utils.external.textile import textile
 
 help_message = """
 First argument must be an authentication cookie that can be cut & pasted after
