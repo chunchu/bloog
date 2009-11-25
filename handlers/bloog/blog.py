@@ -129,7 +129,7 @@ def get_friendly_url(title):
 
 def get_html(body, markup_type):
     if markup_type == 'textile':
-        from external.libs import textile
+        from utils.external.textile import textile
         return textile.textile(body)
     return body
 
@@ -540,12 +540,11 @@ class SearchHandler(restful.Controller):
         query_string = 's=' + urllib.quote_plus(search_term) + '&'
         page = view.ViewPage()
         try:
-            page.render_query(
-                self, 'articles', 
-                models.blog.Article.all().search(search_term). \
-                    order('-published'), 
+            page.render_query( self, 'articles', 
+                models.blog.Article.all().search( search_term,
+                    properties=['title','body'] ).order('-published'), 
                 {'search_term': cgi.escape(search_term),
-                 'query_string': query_string})
+                    'query_string': query_string} )
         except datastore_errors.NeedIndexError:
             page.render(self, {'search_term': cgi.escape(search_term),
                                'search_error_message': """
@@ -590,6 +589,10 @@ class MonthHandler(restful.Controller):
         
 class AtomHandler(webapp.RequestHandler):
     def get(self):
+        if self.request.path == config.BLOG['legacy_atom_url']:
+            self.redirect(config.BLOG['master_atom_url'],permanent=True)
+            return
+        
         logging.debug("Sending Atom feed")
         articles = db.Query(models.blog.Article). \
                       filter('article_type =', 'blog entry'). \
