@@ -1,2 +1,4 @@
 User-agent: *
-Disallow: /tag/*
+Disallow: /search
+Allow: /
+Sitemap: http:/blog.thomnichols.org/sitemap.xml
