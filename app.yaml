@@ -39,7 +39,9 @@ skip_files: |
  (dev/.*)|
  (tests/.*)|
  (docs/.*)|
- (.*\.markdown)|
+ (.*\.markdown)|(.*\.md)|
  (license\.txt)|
- (setup.py)
+ (setup\.py)|
+ (README.*)|
+ (Thumbs\.db)
  )$
