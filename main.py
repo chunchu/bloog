@@ -59,6 +59,7 @@ ROUTES = [
     ('/contact/*$', contact.ContactHandler),
     ('/tag/(.*)', blog.TagHandler),
     (config.BLOG['master_atom_url'] + '/*$', blog.AtomHandler),
+    (config.BLOG['legacy_atom_url'] + '/*$', blog.AtomHandler), # old Atom URL from legacy blog (should redirect)
     ('/articles', blog.ArticlesHandler),
     ('/sitemap.xml', blog.SitemapHandler),
     ('/(.*)', blog.ArticleHandler)]
