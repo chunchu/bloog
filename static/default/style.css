@@ -41,8 +41,9 @@ th,td{padding:3px 20px 3px 0px;}
 .popupDialog form .row.right { margin-left: 250px; float:none }
 .popupDialog form .row label{width: 230px;}
 .popupDialog form .row input{width: 230px;}
-.popupDialog form textarea{width: 400px; margin:0px 5px;}
+.popupDialog form textarea{width: 100%; height:100%; margin:0; border:0; padding:0 }
 .popupDialog a { background: transparent url(images/dot.gif) repeat-x scroll left bottom }
+.popupDialog .editor-hidden { visibility: hidden; top: -9999px; left: -9999px; position: absolute }
 #postBody_container {clear:both}
 #postDateContainer { position: absolute; z-index: 2; display:none }
 
@@ -61,7 +62,7 @@ ul.nav{list-style:none;background:#EEE;}
 * html .nav li a:hover{background:#333;width:99px;}
 .nav li.skip{border-left:1px solid #DDD;float:right;display:block width:100px;}
 .nav li.skip a{width:100px;}
-li.top{border-left:1px solid #DDD;float:right;display:block width:100px;}
+li.top{border-left:1px solid #DDD;float:right;display:block; width:100px;}
 li.top a{width:100px;}
 .nav li.skip a:hover, li.top a:hover { background: transparent;color: #333 !important;}
 #archives{background:#333;}

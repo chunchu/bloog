@@ -59,7 +59,7 @@ YAHOO.bloog.initAdmin = function() {
                 }, null);
                 break;
         }
-    }
+    };
 
     YAHOO.bloog.populateDialog = function(o) {
         var article = o.responseText.parseJSON();
@@ -98,7 +98,7 @@ YAHOO.bloog.initAdmin = function() {
             { success: YAHOO.bloog.handleSuccess, 
               failure: YAHOO.bloog.handleFailure },
             postData);
-    }
+    };
 
     YAHOO.bloog.postDialog = new YAHOO.widget.Dialog(
         "postDialog", {
@@ -189,77 +189,120 @@ YAHOO.bloog.initAdmin = function() {
                     { type: 'push', label: 'Javascript', value: 'js', disabled: false },
                     { type: 'push', label: 'Groovy', value: 'groovy', disabled: false },
                     { type: 'push', label: 'XML/HTML', value: 'html', disabled: false },
-                    { type: 'push', label: 'CSS', value: 'css', disabled: false },
+                    { type: 'push', label: 'CSS', value: 'css', disabled: false }
                     ]
                 },
                 { type: 'separator' },
                 { group: 'insertitem', label: 'Insert Item',
                     buttons: [
                         { type: 'push', label: 'HTML Link CTRL + SHIFT + L', value: 'createlink', disabled: true },
-                        { type: 'push', label: 'Insert Image', value: 'insertimage' }
+                        { type: 'push', label: 'Insert Image', value: 'insertimage' },
+                        { type: 'push', label: 'Edit raw HTML', value: 'editraw' }
                     ]
                 }
             ]
         }
     });
 
-    //Use the toolbarLoaded Custom Event; when that event fires,
-    //we will execute a function that adds the code buttons:
     YAHOO.bloog.editor.on('toolbarLoaded', function() {
 
-        // Now listen for the new buttons click and do something with it.
-        // Note that the clicks are events synthesized for us automatically
-        // because those are the values we gave our buttons above:
-        this.toolbar.on('pythonClick', function(o) {
-            this.execCommand('inserthtml', '<p></p><pre class="brush: python"># Python code here</pre><p></p>');
-        }, YAHOO.bloog.editor, true);
-        this.toolbar.on('jsClick', function(o) {
-            this.execCommand('inserthtml', '<p></p><pre class="brush: js">// Javascript code here</pre><p></p>');
-        }, YAHOO.bloog.editor, true);
-        this.toolbar.on('groovyClick', function(o) {
-            this.execCommand('inserthtml', '<p></p><pre class="brush: groovy">// Groovy code here</pre><p></p>');
-        }, YAHOO.bloog.editor, true);
-        this.toolbar.on('cssClick', function(o) {
-            this.execCommand('inserthtml', '<p></p><pre class="brush: css">/* CSS code here */</pre><p></p>');
-        }, YAHOO.bloog.editor, true);
-        this.toolbar.on('htmlClick', function(o) {
-            this.execCommand('inserthtml', '<p></p><pre class="brush: html">&lt;!-- XML/HTML code here --></pre><p></p>');
-        }, YAHOO.bloog.editor, true);
+      this.toolbar.on('pythonClick', function(o) {
+          this.execCommand('inserthtml', '<p></p><pre class="brush: python"># Python code here</pre><p></p>');
+      }, this, true);
+      this.toolbar.on('jsClick', function(o) {
+          this.execCommand('inserthtml', '<p></p><pre class="brush: js">// Javascript code here</pre><p></p>');
+      }, this, true);
+      this.toolbar.on('groovyClick', function(o) {
+          this.execCommand('inserthtml', '<p></p><pre class="brush: groovy">// Groovy code here</pre><p></p>');
+      }, this, true);
+      this.toolbar.on('cssClick', function(o) {
+          this.execCommand('inserthtml', '<p></p><pre class="brush: css">/* CSS code here */</pre><p></p>');
+      }, this, true);
+      this.toolbar.on('htmlClick', function(o) {
+          this.execCommand('inserthtml', '<p></p><pre class="brush: html">&lt;!-- XML/HTML code here --></pre><p></p>');
+      }, this, true);
         
-        this.toolbar.on('codeClick', function() { this.execCommand('code'); } );
-        this.cmd_code = function() { // TODO 
-          if ( this._hasSelection() ) {
-            var code = this._createCurrentElement('code');
-            this._selectNode(this.currentElement[0]);
-          }
-          else this.execCommand('inserthtml', '<code>&nbsp;</code>');
-          return [true];
-        };
-        //Setup the button to be enabled, disabled or selected
-        this.on('afterNodeChange', function() { 
-            
-            if ( this._hasSelection() ) {
-              this.toolbar.disableButton(this.toolbar.getButtonByValue('python'));
-              this.toolbar.disableButton(this.toolbar.getButtonByValue('groovy'));
-              this.toolbar.disableButton(this.toolbar.getButtonByValue('html'));
-              this.toolbar.disableButton(this.toolbar.getButtonByValue('css'));
-              this.toolbar.disableButton(this.toolbar.getButtonByValue('js'));
-            }
-            var el = this._getSelectedElement();
-            if ( ! el ) return;
-            var val;
-            if ( el.tagName == 'CODE' ) val = 'code';
-            el = Ojay(el);
-            if ( el.hasClass('brush:') ) {
-              if ( el.hasClass('html') ) val = 'html';
-              else if ( el.hasClass('python') ) val = 'python';
-              else if ( el.hasClass('groovy') ) val = 'groovy';
-              else if ( el.hasClass('java') ) val = 'java';
-              else if ( el.hasClass('css') ) val = 'css';
-            }
-            if ( ! val ) return;
-            this.toolbar.selectButton(this.toolbar.getButtonByValue(val));
-        },this,true);
+      this.toolbar.on('codeClick', function() { this.execCommand('code'); } );
+      this.cmd_code = function() {
+        if ( this._hasSelection() ) {
+          var code = this._createCurrentElement('code');
+          this._selectNode(this.currentElement[0]);
+        }
+        else this.execCommand('inserthtml', '<code>&nbsp;</code>');
+        return [true];
+      };
+        
+      //Setup the button to be enabled, disabled or selected
+      this.on('afterNodeChange', function() {     
+        if ( this._hasSelection() ) {
+          this.toolbar.disableButton(this.toolbar.getButtonByValue('python'));
+          this.toolbar.disableButton(this.toolbar.getButtonByValue('groovy'));
+          this.toolbar.disableButton(this.toolbar.getButtonByValue('html'));
+          this.toolbar.disableButton(this.toolbar.getButtonByValue('css'));
+          this.toolbar.disableButton(this.toolbar.getButtonByValue('js'));
+        }
+        var el = this._getSelectedElement();
+        if ( ! el ) return;
+        var val;
+        if ( el.tagName == 'CODE' ) val = 'code';
+        el = Ojay(el);
+        if ( el.hasClass('brush:') ) {
+          if ( el.hasClass('html') ) val = 'html';
+          else if ( el.hasClass('python') ) val = 'python';
+          else if ( el.hasClass('groovy') ) val = 'groovy';
+          else if ( el.hasClass('java') ) val = 'java';
+          else if ( el.hasClass('css') ) val = 'css';
+        }
+        if ( ! val ) return;
+        this.toolbar.selectButton(this.toolbar.getButtonByValue(val));
+      },this,true);
+      
+      this.state = 'on';
+      
+      this.on('afterRender', function() {
+        var wrapper = this.get('editor_wrapper');
+        wrapper.appendChild(this.get('element'));
+        this.addClass('editor-hidden');
+        this.setStyle('width', '100%');
+        this.setStyle('height', '100%');
+        this.setStyle('visibility', '');
+        this.setStyle('top', '');
+        this.setStyle('left', '');
+        this.setStyle('position', '');
+      }, this, true);
+
+      this.toolbar.on('editrawClick', function() {
+        var ta = $$(this.get('element')),
+        iframe = $$(this.get('iframe').get('element'));
+
+        if (this.state == 'off') {
+          this.state = 'on';
+          this.toolbar.set('disabled', false);
+          this.setEditorHTML(ta.node.value);
+          if (!this.browser.ie) this._setDesignMode('on');
+          iframe.removeClass('editor-hidden');
+          ta.addClass('editor-hidden');
+          this.show();
+          this._focusWindow();
+        } else {
+          this.state = 'off';
+          this.cleanHTML();
+          //ta.node.value = this.getEditorHTML;
+          iframe.addClass('editor-hidden');
+          ta.removeClass('editor-hidden');
+          this.toolbar.set('disabled', true);
+          this.toolbar.getButtonByValue('editraw').set('disabled', false);
+          this.toolbar.selectButton('editraw');
+          this.dompath.innerHTML = 'Editing HTML Code';
+          this.hide();
+        }
+        return false;
+      }, this, true);
+      
+      this.on('cleanHTML', function(ev) { 
+        this.get('element').value = ev.html; 
+      }, this, true);
+
     }, YAHOO.bloog.editor, true);
     YAHOO.bloog.editor.render();
     
