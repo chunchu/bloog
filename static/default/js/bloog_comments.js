@@ -30,8 +30,9 @@ YAHOO.bloog.initComments = function() {
         $('commentTitle').value = "Re: " + ( (link.hash.length > 1) ?
           $$(link.hash).descendants('.comment_meta .subject').node.innerHTML
           : $('blogtitle').innerHTML );
-        Recaptcha.create( $('recaptcha_pub_key').innerHTML, 
-          'recaptcha_container', { theme: "clean" } );
+        if ( typeof( Recaptcha ) != 'undefined' ) // only loaded if not admin
+          Recaptcha.create( $('recaptcha_pub_key').innerHTML, 
+            'recaptcha_container', { theme: "clean" } );
         YAHOO.bloog.commentDialog.render();
         YAHOO.bloog.commentDialog.show();
         YAHOO.bloog.commentEditor.show();
@@ -51,7 +52,7 @@ YAHOO.bloog.initComments = function() {
         YAHOO.bloog.commentDialog.hide();
     }
     var handleFailure = function(o) {
-        alert("Sorry, could not save your comment!");
+        alert("Error saving your comment! " + o.status );
     }
     var handleSubmit = function() {
         YAHOO.bloog.commentEditor.saveHTML();
@@ -116,7 +117,8 @@ YAHOO.bloog.initComments = function() {
                     { group: 'insertitem', label: 'Insert Item',
                         buttons: [ 
                             { type: 'push', label: 'HTML Link CTRL + SHIFT + L', value: 'createlink' }, 
-                            { type: 'push', label: 'Insert Image', value: 'insertimage', disabled: true } 
+                            { type: 'push', label: 'Insert Image', value: 'insertimage', disabled: true },
+                            { type: 'push', label: 'Insert <pre> block', value: 'insertpre' }
                         ]
                     }
                 ]
@@ -125,6 +127,12 @@ YAHOO.bloog.initComments = function() {
     YAHOO.bloog.commentEditor.render();
     YAHOO.bloog.commentDialog.showEvent.subscribe(YAHOO.bloog.commentEditor.show, YAHOO.bloog.commentEditor, true);
     YAHOO.bloog.commentDialog.hideEvent.subscribe(YAHOO.bloog.commentEditor.hide, YAHOO.bloog.commentEditor, true);
+    
+    YAHOO.bloog.commentEditor.on('toolbarLoaded', function() {
+        this.toolbar.on('insertpreClick', function() {
+            this.execCommand('inserthtml', '<pre># insert code here</pre><p></p>');
+        }, YAHOO.bloog.commentEditor, true);
+    });
 
     // Use event bubbling so we don't have to attach listeners to each reply
     $$('div#comments_wrapper').on('click', Ojay.delegateEvent({
