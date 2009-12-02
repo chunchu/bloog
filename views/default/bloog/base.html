@@ -4,6 +4,7 @@
         <meta http-equiv="Content-Type" content="{{ blog.html_type }}; charset={{ blog.charset }}" />
         <title>{{ title }}</title>
         <meta name="generator" content="Bloog {{ bloog_version }}" />
+        <meta name="google-site-verification" content="p0Hu7aK_PFOKsj_IDZsQTD5nyTpV2vahu4tumL0-Eos" />
         <link rel="stylesheet" href="/static/default/style.css" type="text/css" media="screen,print" />
         <link rel="alternate" type="application/rss+xml" title="{{ blog.title }} RSS Feed" 
               href="{{ blog.root_url }}{{ blog.master_atom_url }}" />
@@ -253,7 +254,7 @@
         <script type="text/javascript" src="http://yui.yahooapis.com/combo?{{yui_version}}/build/yahoo-dom-event/yahoo-dom-event.js&{{yui_version}}/build/selector/selector-min.js"></script>
         <script type="text/javascript" src="/static/default/js/ojay/js-class-min.js"></script>
         <script type="text/javascript" src="/static/default/js/ojay/core-min.js"></script>
-        <script type="text/javascript" src="/static/default/js/bloog_base.js"></script>
+        <script type="text/javascript" src="/static/default/js/bloog_base-min.js"></script>
 
         {% if user_is_admin %}
         {% include "form_editor.html" %}
