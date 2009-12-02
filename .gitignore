@@ -4,3 +4,5 @@
 .pydevproject
 *~
 Thumbs.db
+static/default/js/*-min.js
+static/default/*-min.css
