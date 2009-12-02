@@ -7,9 +7,9 @@ Once you've checked out the code, initialize the external modules like so:
 
 bc.  $ git submodule init
 
-This version also uses minified Javascript files (it's hard-coded for now) - \
-you must generate the minified scripts from the source before uploading the \
-application, like so:
+This version also uses minified Javascript files (it's hard-coded for now) - 
+ you must generate the minified scripts from the source before uploading the 
+ application, like so:
 
 bc.  $ dev/scripts/jsmin.py static/default/js/bloog_base.js > static/default/js/bloog_base-min.js
  $ dev/scripts/jsmin.py static/default/js/bloog_admin.js > static/default/js/bloog_admin-min.js
