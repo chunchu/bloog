@@ -244,8 +244,8 @@ def process_comment_submission(handler, article):
 
     # If we aren't administrator, abort if bad captcha
     if not users.is_current_user_admin():
-        cap_challenge = property_hash.get('recaptcha_challenge_field') #captChallenge')
-        cap_response = property_hash.get('recaptcha_response_field') #captResponse')
+        cap_challenge = property_hash.get('recaptcha_challenge_field')
+        cap_response = property_hash.get('recaptcha_response_field')
         
         cap_validation = captcha.RecaptchaResponse(False)
         if cap_challenge and cap_response:
@@ -300,7 +300,7 @@ def process_comment_submission(handler, article):
         
     # Notify the author of a new comment (from matteocrippa.it)
     if config.BLOG['send_comment_notification']:
-        recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'],)
+        recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'])
         body = ("A new comment has just been posted on %s/%s by %s."
                 % (config.BLOG['root_url'], article.permalink, comment.name))
         mail.send_mail(sender=config.BLOG['email'],
@@ -324,7 +324,8 @@ def render_article(handler, article):
         try:
             accept_list = handler.request.headers['Accept']
         except KeyError:
-            logging.error("Had no accept header: %s", handler.request.headers)
+            logging.warning( "Article request missing accept header: %s", 
+                handler.request.headers )
             accept_list = None
         if accept_list and accept_list.split(',')[0] == 'application/json':
             handler.response.headers['Content-Type'] = 'application/json'
@@ -415,12 +416,17 @@ class ArticleHandler(restful.Controller):
             if article and config.BLOG["legacy_entry_redirect"]:
                 self.redirect('/' + article.permalink)
                 return
+        
         render_article(self, article)
 
     @restful.methods_via_query_allowed    
     def post(self, path):
+        logging.debug('Comment for article: %s', path)
         article = db.Query(models.blog.Article).filter('permalink =', path).get()
-        process_comment_submission(self, article)
+        if article: process_comment_submission(self, article)
+        else:
+          logging.warning( 'No article found for comment %s', path )
+          self.error(400)
 
     @authorized.role("admin")
     def put(self, path):
@@ -494,13 +500,13 @@ class BlogEntryHandler(restful.Controller):
     @restful.methods_via_query_allowed    
     def post(self, year, month, perm_stem):
         logging.debug("Adding comment for blog entry %s", self.request.path)
-        permalink = year + '/' + month + '/' + perm_stem
+        permalink = '%s/%s/%s' % (year, month, perm_stem)
         article = db.Query(models.blog.Article). \
                      filter('permalink =', permalink).get()
         if article:
             process_comment_submission(self, article)
         else: # no article found for comment
-            logging.debug("No article attached to submitted comment")
+            logging.warning("No article found for comment to %s", permalink)
             self.error(400)
 
     @authorized.role("admin")
