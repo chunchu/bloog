@@ -38,10 +38,9 @@ YAHOO.bloog.initComments = function() {
         YAHOO.bloog.commentEditor.show();
     }
 
-    var handleSuccess = function(action,o) {
+    var handleSuccess = function(parent_id,o) {
         var response = o.responseText;
         // Insert the comment into the appropriate place then hide dialog.
-        parent_id = action.split('#')[1];
         if (parent_id == '') // Should be inserted at top
             $$('#commentslist').insert(response, 'top');
         else $$('#' + parent_id).insert(response, 'after');
@@ -57,10 +56,11 @@ YAHOO.bloog.initComments = function() {
     var handleSubmit = function() {
         YAHOO.bloog.commentEditor.saveHTML();
         var postData = $$.Forms.getQueryString($('commentDialogForm'));
-        var action = $('commentDialogForm').action;
+        // split action into article ID (0) and parent comment ID (1)
+        var action = $('commentDialogForm').action.split('#');
         var cObj = YAHOO.util.Connect.asyncRequest(
-            'POST', action, 
-            { success: handleSuccess.partial(action), failure: handleFailure },
+            'POST', action[0], 
+            { success: handleSuccess.partial(action[1]), failure: handleFailure },
             postData);
     }
     
