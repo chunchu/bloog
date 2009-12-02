@@ -1,4 +1,5 @@
-= Python Blog for "Google App Engine":http://appengine.google.com/, heavily tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
+Python Blog for [Google App Engine](http://appengine.google.com/), heavily tweaked from [Bill Katz' Bloog](http://github.com/DocSavage/bloog)
+====
 
 == Instructions
 
@@ -30,7 +31,7 @@ Quick list of changes I've made from Katz' original code:
 + Editor tweaks:
 ++ view raw HTML
 ++ Switchable Textile/rich text support(soon)
-++ Inline code tag as well as <pre> blocks
+++ Inline code tag as well as &lt;pre&gt; blocks
 ++ Admin's name and email are inserted by default for comment replies
 ++ Comment subject defaults to "Re: <parent subject>"
 ++ Configurable post date & legacy ID if manually uploading old posts.
