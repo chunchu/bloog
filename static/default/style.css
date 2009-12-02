@@ -37,7 +37,7 @@ th,td{padding:3px 20px 3px 0px;}
 .popupDialog form p, .popupDialog form div.p{margin-bottom:7px;}
 .popupDialog form label{width: 400px;}
 .popupDialog form input{width: 400px;}
-.popupDialog form .row.left { float: left; margin-right: 20px }
+.popupDialog form .row { float: left }
 .popupDialog form .row.right { margin-left: 250px; float:none }
 .popupDialog form .row label{width: 230px;}
 .popupDialog form .row input{width: 230px;}
@@ -60,9 +60,9 @@ ul.nav{list-style:none;background:#EEE;}
 .nav li a span{font-size:11px;color:#777;text-transform:lowercase;}
 .nav li a:hover{background:#333;color:#eee!important;width:95px;}
 * html .nav li a:hover{background:#333;width:99px;}
-.nav li.skip{border-left:1px solid #DDD;float:right;display:block width:100px;}
+.nav li.skip{border-left:1px solid #DDD;float:right;display:block;width:100px;}
 .nav li.skip a{width:100px;}
-li.top{border-left:1px solid #DDD;float:right;display:block; width:100px;}
+li.top{border-left:1px solid #DDD;float:right;display:block;width:100px;}
 li.top a{width:100px;}
 .nav li.skip a:hover, li.top a:hover { background: transparent;color: #333 !important;}
 #archives{background:#333;}
@@ -76,8 +76,8 @@ li.top a{width:100px;}
 #poweredby {float:right;width:120px;height:30px;}
 
 /* main - middle content and columns */
-#mid{}#mainCol{float:left;margin:26px 0 0 0;width:508px;}
-#mid{}#twoCol{float:left;margin:26px 0 0 0;width:508px;}
+#mainCol{float:left;margin:26px 0 0 0;width:508px;}
+#twoCol{float:left;margin:26px 0 0 0;width:508px;}
 
 /* style individual sidebars */
 #midCol ul a{font-weight:bold;}
@@ -147,7 +147,7 @@ h3#respond{color:#555;margin-bottom:7px;}
 #commentslist li a{font-size:10px;background:url(images/dot.gif) repeat-x bottom left;text-transform:none;}
 #commentslist li.alt{background:#FFF;}
 #commentslist li:hover{border-color:#888;}
-#commentslist .comment_text li{list-style:normal;background:#FFF;border:none;margin:0 0 0 14px;padding:0;}
+#commentslist .comment_text li{background:#FFF;border:none;margin:0 0 0 14px;padding:0;}
 #commentslist .comment_text{margin:0 7px;line-height:1.4em;overflow:hidden;}
 .comment_text p,
 .comment_text ul,

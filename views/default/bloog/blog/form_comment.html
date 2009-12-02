@@ -7,11 +7,11 @@
                 <input type="text" id="commentName" name="name" size="50" />
             </p>
             <div class='p'>
-              <div class='row left'>
+              <div class='row'>
                 <label for="commentEmail">E-mail: (used for Gravatar)</label><br />
                 <input type="text" id="commentEmail" name="email" size="50" />
               </div>
-              <div class='row'>
+              <div class='row right'>
                 <label for="commentHomepage">Homepage:</label><br />
                 <input type="text" id="commentHomepage" name="homepage" size="50" />
               </div>
@@ -26,7 +26,7 @@
             </textarea>
 
             <span id='recaptcha_pub_key' style='display:none'>{{ captcha }}</span>
-            <div id='recaptcha_container' />
+            <div id='recaptcha_container'></div>
         </form>
     </div>
 </div>
