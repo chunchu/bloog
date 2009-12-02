@@ -71,7 +71,9 @@ Function.prototype.bind = function() {
          */
         surrenderAlias: function() {
             if (this.__alias === null) {
-                if (this.ALIAS) delete window[this.ALIAS];
+                if (this.ALIAS) 
+                  if (YAHOO.env.ua.ie) window[this.ALIAS] = null;
+                  else delete window[this.ALIAS];
                 return false;
             }
             window[this.ALIAS] = this.__alias;
