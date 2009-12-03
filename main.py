@@ -36,7 +36,7 @@ import wsgiref.handlers
 from firepython.middleware import FirePythonWSGI
 from google.appengine.ext import webapp
 from google.appengine.api import users
-from handlers.bloog import blog, contact, cache_stats, timings
+from handlers.bloog import blog, contact, cache_stats, timings, imagestore
 
 # Import custom django libraries
 webapp.template.register_template_library('utils.django_libs.gravatar')
@@ -57,6 +57,7 @@ ROUTES = [
     ('/admin/timings/*$', timings.TimingHandler),
     ('/search', blog.SearchHandler),
     ('/contact/*$', contact.ContactHandler),
+    ('/imgstore/?([\w]*)/?', imagestore.ImageHandler),
     ('/tag/(.*)', blog.TagHandler),
     (config.BLOG['master_atom_url'] + '/*$', blog.AtomHandler),
     (config.BLOG['legacy_atom_url'] + '/*$', blog.AtomHandler), # old Atom URL from legacy blog (should redirect)
