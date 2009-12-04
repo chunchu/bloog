@@ -8,8 +8,11 @@
         <link rel="stylesheet" href="/static/default/style.css" type="text/css" media="screen,print" />
         <link rel="alternate" type="application/rss+xml" title="{{ blog.title }} RSS Feed" 
               href="{{ blog.root_url }}{{ blog.master_atom_url }}" />
+        {% if debug %}
+        <link rel="stylesheet" type="text/css" href="/static/hosted/yui/assets/skins/sam/skin.css" />
+        {% else %}
         <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/{{yui_version}}/build/assets/skins/sam/skin.css" />
-        <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/{{yui_version}}/build/container/assets/skins/sam/container.css" />
+        {% endif %}
         {% block head %}
         {% endblock %}
     </head>
@@ -251,10 +254,18 @@
             </div>
         </div>
 
+        {% if debug %}
+        <script type="text/javascript" src='/static/hosted/yui/yahoo-dom-event/yahoo-dom-event.js'></script>
+        <script type="text/javascript" src='/static/hosted/yui/selector/selector.js'></script>
+        <script type="text/javascript" src="/static/default/js/ojay/js-class.js"></script>
+        <script type="text/javascript" src="/static/default/js/ojay/core.js"></script>
+        <script type="text/javascript" src="/static/default/js/bloog_base.js"></script>
+        {% else %}
         <script type="text/javascript" src="http://yui.yahooapis.com/combo?{{yui_version}}/build/yahoo-dom-event/yahoo-dom-event.js&{{yui_version}}/build/selector/selector-min.js"></script>
         <script type="text/javascript" src="/static/default/js/ojay/js-class-min.js"></script>
         <script type="text/javascript" src="/static/default/js/ojay/core-min.js"></script>
         <script type="text/javascript" src="/static/default/js/bloog_base-min.js"></script>
+        {% endif %}
 
         {% if user_is_admin %}
         {% include "form_editor.html" %}
