@@ -34,6 +34,7 @@ To Do:
 __author__ = 'Thomas Nichols'
 
 import logging
+import re
 from google.appengine.ext import webapp
 from google.appengine.api import memcache
 from utils import authorized
@@ -96,9 +97,16 @@ class ImageHandler(webapp.RequestHandler):
     img.put()
     logging.info("Saved image to key %s", img.key() ) 
     #self.redirect(urlBase % img.key() )  #dummy redirect is acceptable for non-AJAX clients,
-    # location header should be acceptable for true REST clients, however AJAX requests will likely not be able to access
+    # location header should be acceptable for true REST clients, however AJAX requests might not be able to access
     # the location header so we'll write a 200 response with the new URL in the response body:
     self.response.headers['Location'] = urlBase % img.key()
+    
+    acceptType = self.request.accept.best_match( listRenderers.keys() )
+    out = self.response.out
+    if acceptType == 'application/json':
+      out.write( '{"name":"%s","href":"%s"}' % ( str(img.name), urlBase % img.key() ) )
+    elif re.search( 'html|xml', acceptType ):
+       out.write( '<a href="%s">%s</a>' % ( urlBase % img.key(), str(img.name) ) )
     
   @authorized.role("admin")
   def delete(self,id):

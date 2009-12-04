@@ -197,6 +197,7 @@ YAHOO.bloog.initAdmin = function() {
                     buttons: [
                         { type: 'push', label: 'HTML Link CTRL + SHIFT + L', value: 'createlink', disabled: true },
                         { type: 'push', label: 'Insert Image', value: 'insertimage' },
+                        { type: 'push', label: 'Upload Image', value: 'uploadimage' },
                         { type: 'push', label: 'Edit raw HTML', value: 'editraw' }
                     ]
                 }
@@ -231,6 +232,10 @@ YAHOO.bloog.initAdmin = function() {
         else this.execCommand('inserthtml', '<code>&nbsp;</code>');
         return [true];
       };
+      this.toolbar.on('uploadimageClick', function() { 
+        // override insertimage handling to allow our own image uploader!
+        YAHOO.bloog.uploadPanel.show();
+      });
         
       //Setup the button to be enabled, disabled or selected
       this.on('afterNodeChange', function() {     
@@ -336,6 +341,11 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.addListener( 'postDate', 'click', 
       YAHOO.bloog.calendar.show, YAHOO.bloog.calendar, true );
 
+    YAHOO.bloog.uploadPanel = new YAHOO.widget.SimpleDialog( 'imageUpload', 
+      {close:true, visible:false, fixedcenter:true, width:'20em', modal:true} );
+    YAHOO.bloog.uploadPanel.setHeader("Image Upload");
+    YAHOO.bloog.uploadPanel.render();
+    
     var handleDelete = function() {
         var cObj = YAHOO.util.Connect.asyncRequest( 'DELETE', '#', 
             { success: YAHOO.bloog.handleSuccess, 
@@ -363,6 +373,17 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.on("newblog", "click", showRTE);
     YAHOO.util.Event.on("editbtn", "click", showRTE);
     YAHOO.util.Event.on("deletebtn", "click", function (e) { YAHOO.bloog.deleteDialog.show(); });
+    
+    $$('#imageUploadForm').on('submit',function(form,e) {
+      form = form.node;
+      YAHOO.util.Connect.setForm(form, true);
+      YAHOO.util.Connect.asyncRequest( 'POST', form.action, { 
+          upload: function(xhr) {
+            YAHOO.bloog.editor.execCommand('inserthtml', xhr.responseText );
+          }
+      });
+      e.stopDefault();
+    });
     
     $$('#moreOptionsLink').on('click',function(link,e) {
       var moreOptions = $('moreOptionsContainer');
