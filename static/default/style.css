@@ -20,7 +20,7 @@ Software available at http://www.github.com/DocSavage/bloogle
 */
 
 *{margin:0;padding:0;}
-html,body{background:#FFF;color:#333;text-align:center;} 
+html,body{background:#FFF;color:#333;} 
 body{font:12px arial,helvetica,verdana,sans-serif;}
 h1{font-size:22px;}
 h2{font-size:18px;}
@@ -32,11 +32,11 @@ a:hover{color:#666;}
 #wrapper pre, #wrapper p { clear: none; }  
 th,td{padding:3px 20px 3px 0px;}
 
+form p, form div.p{margin-bottom:7px;}
 .popupDialog div.bd{text-align:center;}
 .popupDialog form{text-align: left;}
-.popupDialog form p, .popupDialog form div.p{margin-bottom:7px;}
-.popupDialog form label{width: 400px;}
-.popupDialog form input{width: 400px;}
+.popupDialog form .p label,
+.popupDialog form .p input{width: 400px;}
 .popupDialog form .row { float: left }
 .popupDialog form .row.right { margin-left: 250px; float:none }
 .popupDialog form .row label{width: 230px;}
