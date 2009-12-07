@@ -99,6 +99,8 @@ YAHOO.bloog.initAdmin = function() {
               failure: YAHOO.bloog.handleFailure },
             postData);
     };
+    
+    var dialogEffect = {effect:YAHOO.widget.ContainerEffect.FADE, duration:0.25};
 
     YAHOO.bloog.postDialog = new YAHOO.widget.Dialog(
         "postDialog", {
@@ -107,6 +109,7 @@ YAHOO.bloog.initAdmin = function() {
             visible: false,
             modal: true,
             constraintoviewpoint: true,
+            effect: dialogEffect,
             buttons: [ { text: "Submit", handler: handleSubmit, 
                          isDefault:true },
                        { text: "Cancel", handler: YAHOO.bloog.handleCancel } ]
@@ -341,11 +344,6 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.addListener( 'postDate', 'click', 
       YAHOO.bloog.calendar.show, YAHOO.bloog.calendar, true );
 
-    YAHOO.bloog.uploadPanel = new YAHOO.widget.SimpleDialog( 'imageUpload', 
-      {close:true, visible:false, fixedcenter:true, width:'20em', modal:true} );
-    YAHOO.bloog.uploadPanel.setHeader("Image Upload");
-    YAHOO.bloog.uploadPanel.render();
-    
     var handleDelete = function() {
         var cObj = YAHOO.util.Connect.asyncRequest( 'DELETE', '#', 
             { success: YAHOO.bloog.handleSuccess, 
@@ -354,8 +352,8 @@ YAHOO.bloog.initAdmin = function() {
     };
     YAHOO.bloog.deleteDialog = new YAHOO.widget.SimpleDialog(
         "confirmDlg", {
-            width: "20em",
-            effect: { effect:YAHOO.widget.ContainerEffect.FADE, duration:0.25 },
+            width: "22em",
+            effect: dialogEffect,
             fixedcenter: true,
             modal: true,
             visible: false,
@@ -374,16 +372,45 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.on("editbtn", "click", showRTE);
     YAHOO.util.Event.on("deletebtn", "click", function (e) { YAHOO.bloog.deleteDialog.show(); });
     
-    $$('#imageUploadForm').on('submit',function(form,e) {
-      form = form.node;
+    var handleUpload = function() {
+      var form = $$('#imageUploadForm').node;
       YAHOO.util.Connect.setForm(form, true);
       YAHOO.util.Connect.asyncRequest( 'POST', form.action, { 
           upload: function(xhr) {
-            YAHOO.bloog.editor.execCommand('inserthtml', xhr.responseText );
+            var editor = YAHOO.bloog.editor;
+            YAHOO.bloog.uploadPanel.hide();
+            if ( $$('#insertAndLink').node.checked ) 
+              editor.execCommand('inserthtml', xhr.responseText + " " );
+            else { // open up 'image insert' dialog and insert correct values in form fields.
+              editor._handleInsertImageClick.bind(YAHOO.bloog.editor)();
+              editor.execCommand('insertimage');
+              var Dom = YAHOO.util.Dom
+                editorID = editor.get('id');
+              var url = Dom.get(editorID + '_insertimage_url'),
+                title = Dom.get(editorID + '_insertimage_title'),
+                link = Dom.get(editorID + '_insertimage_link');
+              var linkXML = xhr.responseXML.body.firstChild; //single <a.. element
+              url.value = linkXML.href;
+              link.value = linkXML.href;
+              title.value = linkXML.innerHTML;
+              /* ugly regex alternative to parse the text link; since the upload is in 
+                  an IFRAME we have limited ability to DOM parse:
+                var resp = /href=(['"])([^\1]+)\1[^>]*>([^<]+)<\/a>/.exec(xhr.responseText);         
+                url.value = resp[2];
+                title.value = resp[3]; */
+            }
           }
       });
-      e.stopDefault();
+    };
+    YAHOO.bloog.uploadPanel = new YAHOO.widget.SimpleDialog( 'imageUpload', {
+        close:true, visible:false, fixedcenter:true, draggable: true,
+        width:'25em', modal:true, effect: dialogEffect,
+        buttons: [ { text: "Upload!", handler: handleUpload },
+                       { text: "Cancel", handler: function () { this.hide(); },
+                         isDefault: true } ]
     });
+    YAHOO.bloog.uploadPanel.setHeader("Image Upload");
+    YAHOO.bloog.uploadPanel.render();    
     
     $$('#moreOptionsLink').on('click',function(link,e) {
       var moreOptions = $('moreOptionsContainer');
