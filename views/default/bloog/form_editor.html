@@ -41,6 +41,19 @@
         </form>
     </div>
 </div>
+<div id='imageUpload'>
+  <div class='bd'>
+    <form id='imageUploadForm' action='/imgstore/' method='post' enctype='multipart/form-data'>
+      <p>Select an image file to upload.  It will be inserted into your post.</p>
+      <div class='p'><input type="file" name="file" /></div>
+      <div class='p'><label for='insertAction'>After upload:</label>
+        <input type="radio" name="insertAction" value='link' checked='true' id='insertAndLink' /> Link
+        <input type="radio" name="insertAction" value='inline' /> Inline image
+      </div>
+      <div class='p' style='display:none'><input type="submit" value="Upload"></div>
+    </form>
+  </div>
+</div>
 
 {% if debug %}
 <!--<script type="text/javascript" src="/static/hosted/yui/combo-admin-min.js"></script>-->
