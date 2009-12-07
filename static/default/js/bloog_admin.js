@@ -136,6 +136,20 @@ YAHOO.bloog.initAdmin = function() {
             draggable: true,
             buttonType: 'advanced',
             buttons: [
+                { group: 'parastyle', label: 'Paragraph Style',
+                    buttons: [
+                    { type: 'select', label: 'Normal', value: 'heading', disabled: true,
+                        menu: [
+                            { text: 'Normal', value: 'none', checked: true },
+                            { text: 'Header 1', value: 'h1' },
+                            { text: 'Header 2', value: 'h2' },
+                            { text: 'Header 3', value: 'h3' },
+                            { text: 'Header 4', value: 'h4' }
+                        ]
+                    }
+                    ]
+                },
+                { type: 'separator' },
                 { group: 'textstyle', label: 'Font Style',
                     buttons: [
                         { type: 'push', label: 'Bold CTRL + SHIFT + B', value: 'bold' },
@@ -153,7 +167,7 @@ YAHOO.bloog.initAdmin = function() {
                         { type: 'push', label: 'Show/Hide Hidden Elements', value: 'hiddenelements' }
                     ]
                 },
-                { type: 'separator' },
+                /*{ type: 'separator' },
                 { group: 'alignment', label: 'Alignment',
                     buttons: [
                         { type: 'push', label: 'Align Left CTRL + SHIFT + [', value: 'justifyleft' },
@@ -161,21 +175,7 @@ YAHOO.bloog.initAdmin = function() {
                         { type: 'push', label: 'Align Right CTRL + SHIFT + ]', value: 'justifyright' },
                         { type: 'push', label: 'Justify', value: 'justifyfull' }
                     ]
-                },
-                { type: 'separator' },
-                { group: 'parastyle', label: 'Paragraph Style',
-                    buttons: [
-                    { type: 'select', label: 'Normal', value: 'heading', disabled: true,
-                        menu: [
-                            { text: 'Normal', value: 'none', checked: true },
-                            { text: 'Header 1', value: 'h1' },
-                            { text: 'Header 2', value: 'h2' },
-                            { text: 'Header 3', value: 'h3' },
-                            { text: 'Header 4', value: 'h4' }
-                        ]
-                    }
-                    ]
-                },
+                },*/
                 { type: 'separator' },
                 { group: 'indentlist', label: 'Indenting',
                     buttons: [
