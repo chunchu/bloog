@@ -180,6 +180,7 @@ class ViewPage(object):
             "login_url": users.create_login_url(handler.request.uri),
             "logout_url": users.create_logout_url(handler.request.uri),
             "blog": config.BLOG,
+            "debug": config.DEBUG,
             "blog_tags": tags
         }
         template_params.update(config.PAGE)
