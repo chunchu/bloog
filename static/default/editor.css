@@ -68,6 +68,13 @@
   left: 5px;
 }
 
+.yui-skin-sam .yui-toolbar-container .yui-toolbar-uploadimage span.yui-toolbar-icon, 
+.yui-skin-sam .yui-toolbar-container .yui-button-uploadimage-selected span.yui-toolbar-icon {
+  background-image: url(images/image_new.gif);
+  background-position: 0 1px;
+  left: 5px;
+}
+
 
 /* for comment form */
 .yui-skin-sam .yui-toolbar-container .yui-toolbar-insertpre span.yui-toolbar-icon, 
