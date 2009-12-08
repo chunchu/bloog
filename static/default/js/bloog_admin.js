@@ -25,32 +25,29 @@
 YAHOO.bloog.initAdmin = function() {
 
     var showRTE = function(e) {
-        var hdr = $$('div#postDialog div.hd');
+        var dialog = YAHOO.bloog.postDialog;
         YAHOO.bloog.http = {};
         switch (this.id) {
             case 'newarticle':
-                hdr.setContent('Submit Article');
+                dialog.setHeader('Submit Article');
                 YAHOO.bloog.http.action = '/';
-                YAHOO.bloog.http.verb = 'POST';
                 YAHOO.bloog.editor.setEditorHTML('<p>Article goes here</p>');
-                YAHOO.bloog.postDialog.render();
-                YAHOO.bloog.postDialog.show();
+                dialog.render();
+                dialog.show();
                 break;
             case 'newblog':
-                hdr.setContent('Submit Blog Entry');
+                dialog.setHeader('Submit Blog Entry');
                 var today = new Date();
                 var month = today.getMonth() + 1;
                 var year = today.getFullYear();
                 YAHOO.bloog.http.action = "/" + year + "/" + month;
-                YAHOO.bloog.http.verb = 'POST';
                 YAHOO.bloog.editor.setEditorHTML('<p>Blog entry goes here</p>');
-                YAHOO.bloog.postDialog.render();
-                YAHOO.bloog.postDialog.show();
+                dialog.render();
+                dialog.show();
                 break;
             case 'editbtn':
-                hdr.setContent('Submit Edit');
+                dialog.setHeader('Submit Article Edit');
                 YAHOO.bloog.http.action = '?_method=PUT';
-                YAHOO.bloog.http.verb = 'POST';
                 // Get the current article content and populate the dialog
                 YAHOO.util.Connect.initHeader('Accept', 'application/json');
                 YAHOO.util.Connect.asyncRequest('GET', '#', {
@@ -92,8 +89,7 @@ YAHOO.bloog.initAdmin = function() {
         YAHOO.bloog.editor.saveHTML();
         var html = YAHOO.bloog.editor.getEditorHTML();
         var postData = $$.Forms.getQueryString($('postDialogForm'));
-        var cObj = YAHOO.util.Connect.asyncRequest(
-            YAHOO.bloog.http.verb, 
+        var cObj = YAHOO.util.Connect.asyncRequest( 'POST', 
             YAHOO.bloog.http.action, 
             { success: YAHOO.bloog.handleSuccess, 
               failure: YAHOO.bloog.handleFailure },
@@ -110,8 +106,7 @@ YAHOO.bloog.initAdmin = function() {
             modal: true,
             constraintoviewpoint: true,
             effect: dialogEffect,
-            buttons: [ { text: "Submit", handler: handleSubmit, 
-                         isDefault:true },
+            buttons: [ { text: "Submit", handler: handleSubmit, isDefault:true },
                        { text: "Cancel", handler: YAHOO.bloog.handleCancel } ]
         });
 
@@ -132,8 +127,6 @@ YAHOO.bloog.initAdmin = function() {
         dompath: true,
         animate: true,
         toolbar: {
-            titlebar: '',
-            draggable: true,
             buttonType: 'advanced',
             buttons: [
                 { group: 'parastyle', label: 'Paragraph Style',
@@ -235,13 +228,10 @@ YAHOO.bloog.initAdmin = function() {
         else this.execCommand('inserthtml', '<code>&nbsp;</code>');
         return [true];
       };
-      this.toolbar.on('uploadimageClick', function() { 
-        // override insertimage handling to allow our own image uploader!
-        YAHOO.bloog.uploadPanel.show();
-      });
+      this.toolbar.on('uploadimageClick', function() {YAHOO.bloog.uploadPanel.show();});
         
       //Setup the button to be enabled, disabled or selected
-      this.on('afterNodeChange', function() {     
+      this.on('afterNodeChange', function() {
         if ( this._hasSelection() ) {
           this.toolbar.disableButton(this.toolbar.getButtonByValue('python'));
           this.toolbar.disableButton(this.toolbar.getButtonByValue('groovy'));
@@ -265,6 +255,8 @@ YAHOO.bloog.initAdmin = function() {
         this.toolbar.selectButton(this.toolbar.getButtonByValue(val));
       },this,true);
       
+      /* Following code for 'raw' HTML view; see: 
+         http://developer.yahoo.com/yui/examples/editor/code_editor.html */
       this.state = 'on';
       
       this.on('afterRender', function() {
@@ -330,9 +322,6 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.bloog.calendar = new YAHOO.widget.Calendar( 'cal1', 
       "postDateContainer", {close:true, title:"Choose a Date"} );
     YAHOO.bloog.calendar.render();
-    YAHOO.bloog.calendarCloseHandler = function() {
-      YAHOO.bloog.calendar.hide();
-    };
     YAHOO.bloog.dateSelectHandler = function() {
       var dt = YAHOO.bloog.calendar.getSelectedDates()[0];
       $("postDate").value = YAHOO.bloog.formatDate(dt);
@@ -370,7 +359,8 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.on("newarticle", "click", showRTE);
     YAHOO.util.Event.on("newblog", "click", showRTE);
     YAHOO.util.Event.on("editbtn", "click", showRTE);
-    YAHOO.util.Event.on("deletebtn", "click", function (e) { YAHOO.bloog.deleteDialog.show(); });
+    YAHOO.util.Event.on("deletebtn", "click", 
+      function() { YAHOO.bloog.deleteDialog.show(); });
     
     var handleUpload = function() {
       var form = $$('#imageUploadForm').node;
@@ -379,11 +369,12 @@ YAHOO.bloog.initAdmin = function() {
           upload: function(xhr) {
             var editor = YAHOO.bloog.editor;
             YAHOO.bloog.uploadPanel.hide();
-            if ( $$('#insertAndLink').node.checked ) 
+            if ( $$.Forms.getData(form).insertAction == 'link' ) 
               editor.execCommand('inserthtml', xhr.responseText + " " );
             else { // open up 'image insert' dialog and insert correct values in form fields.
               editor._handleInsertImageClick.bind(YAHOO.bloog.editor)();
               editor.execCommand('insertimage');
+              editor._windows
               var Dom = YAHOO.util.Dom
                 editorID = editor.get('id');
               var url = Dom.get(editorID + '_insertimage_url'),
@@ -404,13 +395,12 @@ YAHOO.bloog.initAdmin = function() {
     };
     YAHOO.bloog.uploadPanel = new YAHOO.widget.SimpleDialog( 'imageUpload', {
         close:true, visible:false, fixedcenter:true, draggable: true,
-        width:'25em', modal:true, effect: dialogEffect,
+        width:'25em', modal:true, effect: dialogEffect, 
         buttons: [ { text: "Upload!", handler: handleUpload },
-                       { text: "Cancel", handler: function () { this.hide(); },
-                         isDefault: true } ]
+                   { text: "Cancel", handler: function() { this.hide(); }, isDefault: true } ]
     });
     YAHOO.bloog.uploadPanel.setHeader("Image Upload");
-    YAHOO.bloog.uploadPanel.render();    
+    YAHOO.bloog.uploadPanel.render();
     
     $$('#moreOptionsLink').on('click',function(link,e) {
       var moreOptions = $('moreOptionsContainer');
