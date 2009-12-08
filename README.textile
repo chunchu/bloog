@@ -42,3 +42,7 @@ Quick list of changes I've made from Katz' original code:
 * Commenter names link to their homepage
 * Upgrated Syntaxhighlighter to hosted version
 * Configurable VUI version
+
+h2. Final Notes
+
+The image upload feature uses an icon from FamFamFam's "Silk":http://www.famfamfam.com/lab/icons/silk/ icon set.
