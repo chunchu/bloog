@@ -1,7 +1,11 @@
 {% if user_is_admin %}
 
 {% block head %}
+{% if debug %}
 <link rel="stylesheet" type="text/css" href="/static/default/editor.css" />
+{% else %}
+<link rel="stylesheet" type="text/css" href="/static/default/editor-min.css" />
+{% endif %}
 {% endblock %}
 
 <div id="postDialog" class="popupDialog">
@@ -56,21 +60,20 @@
 </div>
 
 {% if debug %}
-<!--<script type="text/javascript" src="/static/hosted/yui/combo-admin-min.js"></script>-->
 <script type="text/javascript" src="/static/hosted/yui/json/json.js"></script>
+<script type="text/javascript" src="/static/hosted/yui/element/element.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/animation/animation.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/connection/connection.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/container/container.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/menu/menu.js"></script>
-<script type="text/javascript" src="/static/hosted/yui/element/element.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/button/button.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/editor/editor.js"></script>
 <script type="text/javascript" src="/static/hosted/yui/calendar/calendar.js"></script>
 <script type="text/javascript" src="/static/default/js/ojay/pkg/forms.js"></script>
 <script type="text/javascript" src="/static/default/js/bloog_admin.js"></script>
 {% else %}
-<script type="text/javascript" src="http://yui.yahooapis.com/combo?{{yui_version}}/build/json/json-min.js&{{yui_version}}/build/animation/animation-min.js&{{yui_version}}/build/connection/connection-min.js&{{yui_version}}/build/container/container-min.js&{{yui_version}}/build/menu/menu-min.js&{{yui_version}}/build/element/element-min.js&{{yui_version}}/build/button/button-min.js&{{yui_version}}/build/editor/editor-min.js&{{yui_version}}/build/calendar/calendar-min.js"></script>
-<script type="text/javascript" src="/static/default/js/ojay/pkg/forms.js"></script>
+<script type="text/javascript" src="http://yui.yahooapis.com/combo?{{yui_version}}/build/json/json-min.js&{{yui_version}}/build/element/element-min.js&{{yui_version}}/build/animation/animation-min.js&{{yui_version}}/build/connection/connection-min.js&{{yui_version}}/build/container/container-min.js&{{yui_version}}/build/menu/menu-min.js&{{yui_version}}/build/button/button-min.js&{{yui_version}}/build/editor/editor-min.js&{{yui_version}}/build/calendar/calendar-min.js"></script>
+<script type="text/javascript" src="/static/default/js/ojay/pkg/forms-min.js"></script>
 <script type="text/javascript" src="/static/default/js/bloog_admin-min.js"></script>
 {% endif %}
 
