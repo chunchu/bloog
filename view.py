@@ -169,7 +169,7 @@ class ViewPage(object):
             NUM_FULL_RENDERS[path] = 0
         NUM_FULL_RENDERS[path] += 1     # This lets us see % of cached views
                                         # in /admin/timings (see timings.py)
-        tags = Tag.list()
+        tags = self.scale_tags_by_count(Tag.list(limit=25))
         #years = Year.get_all_years()
 
         # Define some parameters it'd be nice to have in views by default.
@@ -247,3 +247,28 @@ class ViewPage(object):
 
         self.render(handler, render_params)
 
+    def scale_tags_by_count(self, tags):
+        """
+        Assigns each tag a relative scale to be used for font size styling, in 
+        order to display a 'tag cloud."  The tag with the lowest count will be 
+        assigned 1.0 (for em), and the tag with the highest count will be 2.0 
+        (the choice for min & max will be somewhat dependant on how the UA 
+        scales fonts...)  You could also change the implementation to scale 
+        between 100 and 150 for font-size: n%.
+        This is a view function, so shoult not be rolled into the tag model
+        itself.
+        """
+        tags = filter( lambda t: t['count']>0, tags )
+        vals = list( t['count'] for t in tags )
+        maxC= max(vals)
+        minC= float(min(vals))
+
+        def each_tag(tag):
+          count = tag['count']
+          scale = (count-minC)/(maxC-minC)*.8+1 # Create a float scale between 1 and 2
+          #pct = int((count-minC)/(maxC-minC)*50+100) # alternate % scale between 100 and 150
+          return {'name':tag['name'],'count':count,'scale':'%.1f'%scale}
+          
+        #logging.debug("Tag list: %s", tagList ) 
+        return map(each_tag, tags)
+        

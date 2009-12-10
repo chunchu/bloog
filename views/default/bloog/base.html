@@ -137,8 +137,10 @@
                         {% if blog_tags %}
                             {% for tag in blog_tags %}
                                 {% ifnotequal tag.count 0 %}
-                                <a href="/tag/{{ tag.name|urlencode }}">{{ tag.name }}</a>
-                                ({{ tag.count }})<br />
+                                <span style='font-size:{{tag.scale}}em'>
+                                  <a href="/tag/{{ tag.name|urlencode }}" >{{ tag.name }}</a>
+                                  <small>({{ tag.count }})</small>
+                                </span>&nbsp;
                                 {% endifnotequal %}
                             {% endfor %}
                         {% else %}
