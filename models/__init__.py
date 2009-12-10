@@ -184,7 +184,7 @@ class MemcachedModel(SerializableModel):
     #  of user data.
     # TODO -- Break this up so we won't trip quota on huge lists.
     @classmethod
-    def list(cls, nocache=False):
+    def list(cls, nocache=False, limit=1000):
         """Returns a list of up to 1000 dicts of model values.
            Unless nocache is set to True, memcache will be checked first.
         Returns:
@@ -194,7 +194,7 @@ class MemcachedModel(SerializableModel):
         list_repr = memcache.get(cls.memcache_key())
         if nocache or list_repr is None:
             q = db.Query(cls)
-            objs = q.fetch(limit=1000)
+            objs = q.fetch(limit)
             list_repr = '[' + ','.join([obj._to_repr() for obj in objs]) + ']'
             memcache.set(cls.memcache_key(), list_repr)
         return eval(list_repr)
