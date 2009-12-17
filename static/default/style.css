@@ -135,7 +135,7 @@ ul#imgLinks{list-style:none;margin:7px 0;}
 #more_reading a img { border: none; margin:0 0 3px 2px; }
 
 /* tags */
-p.tags span { font-weight:normal; margin: 0 0 0 .8em; white-space: nowrap; color: #777 }
+p.tags span { font-weight:normal; margin: 0 .8em 0 0; white-space: nowrap; color: #777 }
 p.tags a { color: #777; background: transparent url(images/dot.gif) repeat-x scroll left bottom }
 
 /* style me some comments and inputs */
