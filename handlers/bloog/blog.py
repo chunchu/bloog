@@ -284,10 +284,8 @@ def process_comment_submission(handler, article):
 
     # Get and store some pieces of information from parent article.
     # TODO: See if this overhead can be avoided
-    if not article.num_comments:
-        article.num_comments = 1
-    else:
-        article.num_comments += 1
+    if not article.num_comments: article.num_comments = 1
+    else: article.num_comments += 1
     property_hash['article'] = article.put()
 
     try:
@@ -299,13 +297,13 @@ def process_comment_submission(handler, article):
         return
         
     # Notify the author of a new comment (from matteocrippa.it)
-    if config.BLOG['send_comment_notification']:
+    if config.BLOG['send_comment_notification'] and not users.is_current_user_admin():
         recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'])
-        body = ("A new comment has just been posted on %s/%s by %s."
-                % (config.BLOG['root_url'], article.permalink, comment.name))
+        body = ("A new comment has just been posted on %s/%s by %s:\n\n%s"
+                % (config.BLOG['root_url'], article.permalink, comment.name, comment.body))
         mail.send_mail(sender=config.BLOG['email'],
                        to=recipient,
-                       subject="New comment by %s" % (comment.name,),
+                       subject="New comment by %s" % (comment.name),
                        body=body)
 
     # Render just this comment and send it to client
