@@ -49,19 +49,39 @@ YAHOO.bloog.initComments = function() {
         $$('#num_comments').setContent(String(num_comments));
         YAHOO.bloog.commentEditor.hide();
         YAHOO.bloog.commentDialog.hide();
+
+        $$(YAHOO.bloog.commentDialog.defaultHtmlButton) // re-enable submit btn
+          .removeClass('yui-button-disabled')
+          .descendants('button').set( { disabled : false } )
+          .setContent("Submit!");
     }
     var handleFailure = function(o) {
+        var msg = o.status ? o.status : 
+          o.message ? o.message : "Unknown error: " + o;
         alert("Error saving your comment! " + o.status );
+        // re-enable submit btn in event of failure:
+        $$(YAHOO.bloog.commentDialog.defaultHtmlButton)
+          .removeClass('yui-button-disabled')
+          .descendants('button').set( { disabled : false } )
+          .setContent("Submit!");
     }
     var handleSubmit = function() {
-        YAHOO.bloog.commentEditor.saveHTML();
-        var postData = $$.Forms.getQueryString($('commentDialogForm'));
-        // split action into article ID (0) and parent comment ID (1)
-        var action = $('commentDialogForm').action.split('#');
-        var cObj = YAHOO.util.Connect.asyncRequest(
-            'POST', action[0], 
-            { success: handleSuccess.partial(action[1]), failure: handleFailure },
-            postData);
+        // disable submit button to prevent double submission:
+        $$(YAHOO.bloog.commentDialog.defaultHtmlButton)
+          .addClass('yui-button-disabled')
+          .descendants('button').set( { disabled : true } )
+          .setContent("Submitting...");
+        try {
+            YAHOO.bloog.commentEditor.saveHTML();
+            var postData = $$.Forms.getQueryString($('commentDialogForm'));
+            // split action into article ID (0) and parent comment ID (1)
+            var action = $('commentDialogForm').action.split('#');
+            var cObj = YAHOO.util.Connect.asyncRequest(
+                'POST', action[0], 
+                { success: handleSuccess.partial(action[1]), failure: handleFailure },
+                postData );
+        }
+        catch( ex ) { handleFailure( ex ); }
     }
     
     YAHOO.bloog.commentDialog = new YAHOO.widget.Dialog(
@@ -71,7 +91,7 @@ YAHOO.bloog.initComments = function() {
             visible: false,
             modal: true,
             constraintoviewpoint: true,
-            buttons: [ { text: "Submit", handler: handleSubmit, 
+            buttons: [ { text: "Submit!", handler: handleSubmit, 
                          isDefault:true },
                        { text: "Cancel", handler: YAHOO.bloog.handleCancel } ]
         });
@@ -87,8 +107,6 @@ YAHOO.bloog.initComments = function() {
     var handleDialogSuccess = function() {
         alert("Success from commentDialog");
     };
-    YAHOO.bloog.commentDialog.callback = { success: handleDialogSuccess, 
-                                           failure: YAHOO.bloog.handleFailure };
 
     YAHOO.bloog.commentEditor = new YAHOO.widget.SimpleEditor(
         'commentBody', {

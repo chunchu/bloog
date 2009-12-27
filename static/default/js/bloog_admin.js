@@ -52,7 +52,7 @@ YAHOO.bloog.initAdmin = function() {
                 YAHOO.util.Connect.initHeader('Accept', 'application/json');
                 YAHOO.util.Connect.asyncRequest('GET', '#', {
                     success: YAHOO.bloog.populateDialog,
-                    failure: YAHOO.bloog.handleFailure
+                    failure: handleFailure.partial(null)
                 }, null);
                 break;
         }
@@ -85,15 +85,40 @@ YAHOO.bloog.initAdmin = function() {
       return dtFormat;
     };
     
-    var handleSubmit = function() {
-        YAHOO.bloog.editor.saveHTML();
-        var html = YAHOO.bloog.editor.getEditorHTML();
-        var postData = $$.Forms.getQueryString($('postDialogForm'));
-        var cObj = YAHOO.util.Connect.asyncRequest( 'POST', 
-            YAHOO.bloog.http.action, 
-            { success: YAHOO.bloog.handleSuccess, 
-              failure: YAHOO.bloog.handleFailure },
-            postData);
+    var handleSuccess = function (o) {
+      var response = o.responseText;
+      response = response.split("<!")[0];
+      // Redirect to this new URL -- For some reason this has problems in Safari
+      window.location.href = response;
+    };
+    
+    var handleFailure = function(btn,o) {
+        var msg = o.status ? o.status : 
+          o.message ? o.message : "Unknown error: " + o;
+        alert("Error: " + msg );
+        // re-enable submit btn in event of failure:
+        if( ! btn ) return;
+        $$(btn).removeClass('yui-button-disabled')
+          .descendants('button').set( { disabled : false } )
+          .setContent("Submit!");
+    }
+
+    var handleSubmit = function(evt) {
+        var btn = evt.currentTarget;
+        console.debug(evt);
+        $$(btn).addClass('yui-button-disabled')
+          .descendants('button').set( { disabled : true } )
+          .setContent("Submitting...");
+        try {
+            YAHOO.bloog.editor.saveHTML();
+            var html = YAHOO.bloog.editor.getEditorHTML();
+            var postData = $$.Forms.getQueryString($('postDialogForm'));
+            var cObj = YAHOO.util.Connect.asyncRequest( 'POST', 
+                YAHOO.bloog.http.action, 
+                { success: handleSuccess, failure: handleFailure.partial(btn) },
+                postData);
+        }
+        catch( ex ) { handleFailure(null,ex); }
     };
     
     var dialogEffect = {effect:YAHOO.widget.ContainerEffect.FADE, duration:0.25};
@@ -118,8 +143,6 @@ YAHOO.bloog.initAdmin = function() {
         }
         return true;
     }
-    YAHOO.bloog.postDialog.callback = { success: YAHOO.bloog.handleSuccess, 
-                                        failure: YAHOO.bloog.handleFailure };
 
     YAHOO.bloog.editor = new YAHOO.widget.Editor('postBody', {
         height: '250px',
@@ -333,12 +356,22 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.addListener( 'postDate', 'click', 
       YAHOO.bloog.calendar.show, YAHOO.bloog.calendar, true );
 
-    var handleDelete = function() {
-        var cObj = YAHOO.util.Connect.asyncRequest( 'DELETE', '#', 
-            { success: YAHOO.bloog.handleSuccess, 
-              failure: YAHOO.bloog.handleFailure }
-        );
+    var handleDelete = function(evt) {
+        var btn = evt.currentTarget;
+        $$(btn).addClass('yui-button-disabled') // disable button 
+          .descendants('button').set( { disabled : true } )
+          .setContent("Deleting...");
+        YAHOO.util.Connect.asyncRequest( 'DELETE', '#', { 
+            success: handleSuccess, 
+            failure: function(resp) {
+              $$(btn).removeClass('yui-button-disabled') // re-enable button 
+                .descendants('button').set( { disabled : false } )
+                .setContent("Delete!");
+              alert("Error deleting post: " + resp.status );
+            }
+        });
     };
+    
     YAHOO.bloog.deleteDialog = new YAHOO.widget.SimpleDialog(
         "confirmDlg", {
             width: "22em",
@@ -349,7 +382,7 @@ YAHOO.bloog.initAdmin = function() {
             draggable: false,
             buttons: [ { text: "Delete!", handler: handleDelete },
                        { text: "Cancel", 
-                         handler: function () { this.hide(); },
+                         handler: YAHOO.bloog.handleCancel,
                          isDefault: true } ]
         });
     YAHOO.bloog.deleteDialog.setHeader("Warning");
@@ -397,7 +430,7 @@ YAHOO.bloog.initAdmin = function() {
         close:true, visible:false, fixedcenter:true, draggable: true,
         width:'25em', modal:true, effect: dialogEffect, 
         buttons: [ { text: "Upload!", handler: handleUpload },
-                   { text: "Cancel", handler: function() { this.hide(); }, isDefault: true } ]
+                   { text: "Cancel", handler: YAHOO.bloog.handleCancel, isDefault: true } ]
     });
     YAHOO.bloog.uploadPanel.setHeader("Image Upload");
     YAHOO.bloog.uploadPanel.render();
