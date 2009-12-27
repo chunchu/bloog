@@ -133,7 +133,10 @@ class Article(search.SearchableModel,models.SerializableModel):
         valid XML entities &amp;
         """
         import re
-        return re.sub('&(?!amp;)', '&amp;', self.html)
+        # Double-escaping does not work.  Otherwise a literal '&nbsp;' appears in the feed.
+        # we need to replace named entities with their numeric equivalents.
+        # TODO can we scrub this on post/save rather than when rendering the feed??
+        return re.sub('&nbsp;', '&#160;', self.html)
 
 class Comment(models.SerializableModel):
     """Stores comments and their position in comment threads.
