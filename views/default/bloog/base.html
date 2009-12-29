@@ -5,6 +5,7 @@
         <title>{{ title }}</title>
         <meta name="generator" content="Bloog {{ bloog_version }}" />
         <meta name="google-site-verification" content="p0Hu7aK_PFOKsj_IDZsQTD5nyTpV2vahu4tumL0-Eos" />
+        <meta name="description" content="{{ blog.description }}" />
         <link rel="alternate" type="application/rss+xml" title="{{ blog.title }} RSS Feed" 
               href="{{ blog.root_url }}{{ blog.master_atom_url }}" />
         <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png"/>
@@ -26,7 +27,7 @@
                 <div id="authorBlurb">
                     <img src="/static/default/images/avatar.png" alt="Avatar" />
                     <p id="authorIntro">
-                        {{ blog.description }}
+                        {{ blog.tagline }}
                     </p>
                 </div>
             </div>
@@ -254,7 +255,8 @@
                         {% endif %}
                         </p>
                     </div>
-                    <img id="poweredby" src="/static/images/appengine-noborder-120x30.gif" alt="Powered by Google App Engine" />
+                    <img id="poweredby" alt="Powered by Google App Engine" 
+                      src="http://code.google.com/appengine/images/appengine-noborder-120x30.gif" />
                 </div>
             </div>
         </div>

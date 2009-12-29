@@ -21,9 +21,14 @@ BLOG = {
     # This must be the email address of a registered administrator for the 
     # application due to mail api restrictions.
     "email": "tmnichols@gmail.com",
-    "description": "Technology is evolution outside the gene pool",
-    "root_url": "http://mediarcade.appspot.com",
+    "tagline": "Technology is evolution outside the gene pool",
+    "description": """I'm a Software Engineer living near Providence, RI. &#160;
+          I code for work, freelance, and when an idea strikes me, sometimes 
+          just for fun.""",
+    "root_url": "http://blog.thomnichols.org",
     "master_atom_url": "/feeds/atom.xml",
+    # if you had users following your old blog's atom feed, but want to use a different feed going forward:
+    "legacy_atom_url": '/feeds/posts/default',
     # By default, visitors can comment on article for this many days.
     # This can be overridden by setting article.allow_comments
     "days_can_comment": 60,
@@ -57,7 +62,7 @@ BLOG = {
     # If you want imported legacy entries _not_ mapped in the file above to
     # redirect to their new permanent URL rather than responding on their
     # old URL, set this flag to True.
-    "legacy_entry_redirect": True,
+    "legacy_entry_redirect": True
 }
 
 PAGE = {
@@ -75,9 +80,7 @@ PAGE = {
     ],
     "featuredMyPages": {
         "title": "About Me",
-        "description": """I'm a Software Engineer living near Providence, RI. &nbsp;
-          I code for work, freelance, and when an idea strikes me, sometimes 
-          just for fun.""",
+        "description": BLOG['description'],
         "entries": [
             { "title": "On Twitter", 
               "url": "http://twitter.com/tom_nichols", 
@@ -87,7 +90,7 @@ PAGE = {
               "description": "Projects hosted on Github" },
             { "title": "HTTP Builder", 
               "url": "http://groovy.codehaus.org/modules/http-builder", 
-              "description": "One of my more significant open-source contributions" },
+              "description": "One of my more significant open-source projects" },
             { "title": "My Google Reader Feed", 
               "url": "https://www.google.com/reader/shared/00209487153858041827", 
               "description": "Interesting articles worth passing along" }
@@ -100,9 +103,12 @@ PAGE = {
             { "title": "Google App Engine", 
               "url": "http://code.google.com/appengine/", 
               "description": "The mothership" },
+            { "title": "Bloog", 
+              "url": "http://bloog.billkatz.com/", 
+              "description": "Customize your own blog" },
             { "title": "Groovy", 
               "url": "http://groovy.codehaus.org", 
-              "description": "Programming language of choice" }
+              "description": "Dynamic high-level language for the JVM" }
         ]
     },
 }
