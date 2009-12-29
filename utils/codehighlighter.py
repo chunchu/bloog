@@ -37,7 +37,8 @@ language_jsfiles = {
     'bash': 'Bash',
     'java': 'Java',
     'powershell': 'PowerShell',
-    'sql': 'Sql'
+    'sql': 'Sql',
+    'plain': 'Plain'
 }
 
 def process_html(html):
