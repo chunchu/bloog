@@ -323,7 +323,15 @@ def render_article(handler, path):
             self.redirect(legacy_aliases.redirects[alias])
             return
 
-    # Check undated pages
+    # Test if client prefers JSON, so we can do fast-path cache if not.  Since the 
+    # cache key does not include content-type (maybe it should?) We have to check 
+    # this manually so that a cached HTML response isn't rendered when the client 
+    # actually wanted JSON.
+    json_type = 'application/json'
+    client_wants_json = ( json_type == handler.request.accept.first_match(
+      ['text/html', 'application/xhtml+xml', json_type] ) )
+    if not client_wants_json and view.render_if_cached( handler ) : return
+
     article = db.Query(models.blog.Article).filter('permalink =', path).get()
 
     if not article:
@@ -338,16 +346,9 @@ def render_article(handler, path):
             view.ViewPage(cache_time=36000).render(handler, 
                 {'module_name': 'blog', 'handler_name': 'notfound'})
                 
-    # Check if client is requesting javascript and
-    # return json if javascript is #1 in Accept header.
-    try:
-        accept_list = handler.request.headers['Accept']
-    except KeyError:
-        logging.warning( "Article request missing accept header: %s", 
-            handler.request.headers )
-        accept_list = None
-    if accept_list and accept_list.split(',')[0] == 'application/json':
-        handler.response.headers['Content-Type'] = 'application/json'
+    # Check if client is requesting javascript
+    if client_wants_json:
+        handler.response.headers['Content-Type'] = json_type
         handler.response.out.write(article.to_json())
         return
     else:
@@ -476,8 +477,7 @@ class BlogEntryHandler(restful.Controller):
         logging.debug("BlogEntryHandler#get for year %s, "
                       "month %s, and perm_link %s", 
                       year, month, perm_stem)
-        permalink = '%s/%s/%s' % (year, month, perm_stem)
-        render_article( self, permalink )
+        render_article( self, '%s/%s/%s' % (year, month, perm_stem) )
 
     @restful.methods_via_query_allowed    
     def post(self, year, month, perm_stem):
