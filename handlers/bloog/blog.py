@@ -359,9 +359,8 @@ def render_article(handler, path):
         if allow_comments is None:
             age = (datetime.datetime.now() - article.published).days
             allow_comments = (age <= config.BLOG['days_can_comment'])
-        page = view.ViewPage()
         title = "%s :: %s" %  ( article.title, config.BLOG['title'] )
-        page.render(handler, { "two_columns": two_columns,
+        view.ViewPage().render(handler, { "two_columns": two_columns,
                                "allow_comments": allow_comments,
                                "article": article,
                                "title": title,
@@ -385,8 +384,7 @@ class RootHandler(restful.Controller):
     def get(self):
         logging.debug("RootHandler#get")
         if view.render_if_cached( self ): return  # quick cache path
-        page = view.ViewPage()
-        page.render_query(
+        view.ViewPage().render_query(
             self, 'articles', 
             db.Query(models.blog.Article). \
                filter('article_type =', 'blog entry').order('-published'))
@@ -514,8 +512,7 @@ class TagHandler(restful.Controller):
         tag =  re.sub('(%25|%)(\d\d)', 
                       lambda cmatch: chr(string.atoi(cmatch.group(2), 16)),                 
                       encoded_tag)   # No urllib.unquote in AppEngine?
-        page = view.ViewPage()
-        page.render_query(
+        view.ViewPage().render_query(
             self, 'articles', 
             db.Query(models.blog.Article).filter('tags =',        
                                                  tag).order('-published'), 
@@ -545,8 +542,7 @@ class YearHandler(restful.Controller):
         logging.debug("YearHandler#get for year %s", year)
         start_date = datetime.datetime(string.atoi(year), 1, 1)
         end_date = datetime.datetime(string.atoi(year)+1, 1, 1)
-        page = view.ViewPage()
-        page.render_query(
+        view.ViewPage().render_query(
             self, 'articles', 
             db.Query(models.blog.Article).order('-published'). \
                filter('published >=', start_date). \
@@ -560,8 +556,7 @@ class MonthHandler(restful.Controller):
         imonth = string.atoi(month)
         start_date = datetime.datetime(iyear, imonth, 1)
         end_date = datetime.datetime(iyear, imonth+1, 1)
-        page = view.ViewPage()
-        page.render_query( self, 'articles', 
+        view.ViewPage().render_query( self, 'articles', 
             db.Query(models.blog.Article).order('-published'). \
                filter('published >=', start_date). \
                filter('published <', end_date), 
@@ -582,31 +577,29 @@ class AtomHandler(webapp.RequestHandler):
             return
         
         logging.debug("ATOM feed")
+        self.response.headers['Content-Type'] = 'application/atom+xml'
         if view.render_if_cached( self ): return  # quick cache path
+
         articles = db.Query(models.blog.Article). \
                       filter('article_type =', 'blog entry'). \
                       order('-published').fetch(limit=10)
         updated = ''
-        if articles:
-            updated = articles[0].rfc3339_updated()
+        if articles: updated = articles[0].rfc3339_updated()
         
         try: full_content= self.request.params['full'] in ['1','true','True']
         except: full_content= False
-        self.response.headers['Content-Type'] = 'application/atom+xml'
-        page = view.ViewPage()
-        page.render(self, {"blog_updated_timestamp": updated, 
+        view.ViewPage().render(self, {"blog_updated_timestamp": updated, 
                            "articles": articles, "ext": "xml",
                            'full_content': full_content })
 
 class SitemapHandler(webapp.RequestHandler):
   def get(self):
     logging.debug("Sending Sitemap")
+    self.response.headers['Content-Type'] = 'text/xml'
     if view.render_if_cached( self ): return  # quick cache path
     articles = db.Query(models.blog.Article).order('-published').fetch(1000)
     if articles:
-      self.response.headers['Content-Type'] = 'text/xml'
-      page = view.ViewPage()
-      page.render(self, {
+      view.ViewPage().render(self, {
           "articles": articles,
           "ext": "xml",
           "root_url": config.BLOG['root_url']
