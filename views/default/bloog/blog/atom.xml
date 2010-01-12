@@ -27,12 +27,25 @@
             <uri>{{ blog.root_url }}</uri>
         </author>
 
+        {% if full_content %}
+        <content type="xhtml" xml:lang="en" xml:base="{{ blog.root_url }}">
+            <div xmlns="http://www.w3.org/1999/xhtml">
+                {{ article.to_atom_xml }}
+                <p><a href="{{ article.full_permalink }}#comments">Comments &#8230;</a></p>
+            </div>
+        </content>
+        {% else %}
         <summary type="xhtml" xml:lang="en" xml:base="{{ blog.root_url }}">
             <div xmlns="http://www.w3.org/1999/xhtml">
                 {{ article.to_atom_xml|truncatewords_html:88 }}
-                <p><a href="{{ article.full_permalink }}">Read more &#8230;</a></p>
+                <p>
+                  <a href="{{ article.full_permalink }}">Read more &#8230;</a> 
+                  &#160;&#160;|&#160;&#160;
+                  <a href="{{ article.full_permalink }}#comments">Comments &#8230;</a>
+                </p>
             </div>
         </summary>
+        {% endif %}
         
         {% for tag in article.tags %}
         <category term="{{ tag }}" />

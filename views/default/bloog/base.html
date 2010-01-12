@@ -175,11 +175,15 @@
                     <div class="middle_links">
                         <h3>Subscribe</h3>
                         <p>
-                            Stay updated on my thoughts &amp; activities via Atom syndication.
+                            Stay updated via syndication.
                         </p>
                         <ul>
                             <li>
                                 <a href="{{ blog.master_atom_url }}" title="Full content Atom feed">Atom feed</a>
+                                - Summaries only
+                            </li>
+                            <li>
+                                <a href="{{ blog.master_atom_url }}?full=1" title="Full content Atom feed">Atom feed</a>
                                 - Full content
                             </li>
                         </ul>

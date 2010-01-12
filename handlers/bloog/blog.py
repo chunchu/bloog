@@ -608,10 +608,13 @@ class AtomHandler(webapp.RequestHandler):
         if articles:
             updated = articles[0].rfc3339_updated()
         
+        try: full_content= self.request.params['full'] in ['1','true','True']
+        except: full_content= False
         self.response.headers['Content-Type'] = 'application/atom+xml'
         page = view.ViewPage()
         page.render(self, {"blog_updated_timestamp": updated, 
-                           "articles": articles, "ext": "xml"})
+                           "articles": articles, "ext": "xml",
+                           'full_content': full_content })
 
 class SitemapHandler(webapp.RequestHandler):
   def get(self):
