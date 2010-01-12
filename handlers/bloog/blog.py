@@ -315,46 +315,60 @@ def process_comment_submission(handler, article):
     handler.response.out.write(response)
     view.invalidate_cache()
 
-def render_article(handler, article):
-    if article:
-        # Check if client is requesting javascript and
-        # return json if javascript is #1 in Accept header.
-        try:
-            accept_list = handler.request.headers['Accept']
-        except KeyError:
-            logging.warning( "Article request missing accept header: %s", 
-                handler.request.headers )
-            accept_list = None
-        if accept_list and accept_list.split(',')[0] == 'application/json':
-            handler.response.headers['Content-Type'] = 'application/json'
-            handler.response.out.write(article.to_json())
+def render_article(handler, path):
+    # Handle precomputed legacy aliases
+    # TODO: Use hash for case-insensitive lookup
+    for alias in legacy_aliases.redirects:
+        if path.lower() == alias.lower():
+            self.redirect(legacy_aliases.redirects[alias])
             return
-        else:
-            two_columns = article.two_columns
-            if two_columns is None:
-                two_columns = article.is_big()
-            allow_comments = article.allow_comments
-            if allow_comments is None:
-                age = (datetime.datetime.now() - article.published).days
-                allow_comments = (age <= config.BLOG['days_can_comment'])
-            page = view.ViewPage()
-            title = "%s :: %s" %  ( article.title, config.BLOG['title'] )
-            page.render(handler, { "two_columns": two_columns,
-                                   "allow_comments": allow_comments,
-                                   "article": article,
-                                   "title": title,
-                                   "taglist": ', '.join(article.tags),
-                                   "captcha": config.BLOG['recap_public_key'],
-                                   "use_gravatars": config.BLOG['use_gravatars']
-            })
+
+    # Check undated pages
+    article = db.Query(models.blog.Article).filter('permalink =', path).get()
+
+    if not article:
+        # This lets you map arbitrary URL patterns like /node/3
+        #  to article properties, e.g. 3 -> legacy_id property
+        article = legacy_id_mapping(path, config.BLOG["legacy_blog_software"])
+        if article and config.BLOG["legacy_entry_redirect"]:
+            self.redirect('/' + article.permalink)
+            return
+        else: # not found.  Could do --> self.redirect('/404.html')
+            handler.error(404)
+            view.ViewPage(cache_time=36000).render(handler, 
+                {'module_name': 'blog', 'handler_name': 'notfound'})
+                
+    # Check if client is requesting javascript and
+    # return json if javascript is #1 in Accept header.
+    try:
+        accept_list = handler.request.headers['Accept']
+    except KeyError:
+        logging.warning( "Article request missing accept header: %s", 
+            handler.request.headers )
+        accept_list = None
+    if accept_list and accept_list.split(',')[0] == 'application/json':
+        handler.response.headers['Content-Type'] = 'application/json'
+        handler.response.out.write(article.to_json())
+        return
     else:
-        # This didn't fall into any of our pages or aliases.
-        # Page not found.
-        #   could do --> self.redirect('/404.html')
-        handler.error(404)
-        view.ViewPage(cache_time=36000). \
-             render(handler, {'module_name': 'blog', 
-                              'handler_name': 'notfound'})
+        two_columns = article.two_columns
+        if two_columns is None:
+            two_columns = article.is_big()
+        allow_comments = article.allow_comments
+        if allow_comments is None:
+            age = (datetime.datetime.now() - article.published).days
+            allow_comments = (age <= config.BLOG['days_can_comment'])
+        page = view.ViewPage()
+        title = "%s :: %s" %  ( article.title, config.BLOG['title'] )
+        page.render(handler, { "two_columns": two_columns,
+                               "allow_comments": allow_comments,
+                               "article": article,
+                               "title": title,
+                               "taglist": ', '.join(article.tags),
+                               "captcha": config.BLOG['recap_public_key'],
+                               "use_gravatars": config.BLOG['use_gravatars']
+        })
+
 
 class NotFoundHandler(webapp.RequestHandler):
     def get(self):
@@ -392,31 +406,10 @@ class ArticlesHandler(restful.Controller):
             num_limit=20)
 
 # Articles are off root url
-# TODO -- Make it DRY by combining Article/MonthHandler
 class ArticleHandler(restful.Controller):
     def get(self, path):
         logging.debug("ArticleHandler#get on path (%s)", path)
-        # Handle precomputed legacy aliases
-        # TODO: Use hash for case-insensitive lookup
-        for alias in legacy_aliases.redirects:
-            if path.lower() == alias.lower():
-                self.redirect(legacy_aliases.redirects[alias])
-                return
-
-        # Check undated pages
-        article = db.Query(models.blog.Article). \
-                     filter('permalink =', path).get()
-
-        if not article:
-            # This lets you map arbitrary URL patterns like /node/3
-            #  to article properties, e.g. 3 -> legacy_id property
-            article = legacy_id_mapping(path,
-                                        config.BLOG["legacy_blog_software"])
-            if article and config.BLOG["legacy_entry_redirect"]:
-                self.redirect('/' + article.permalink)
-                return
-        
-        render_article(self, article)
+        render_article(self, path)
 
     @restful.methods_via_query_allowed    
     def post(self, path):
@@ -483,19 +476,8 @@ class BlogEntryHandler(restful.Controller):
         logging.debug("BlogEntryHandler#get for year %s, "
                       "month %s, and perm_link %s", 
                       year, month, perm_stem)
-        if view.render_if_cached( self ): return  # quick cache path
         permalink = '%s/%s/%s' % (year, month, perm_stem)
-        article = db.Query(models.blog.Article). \
-                     filter('permalink =', permalink).get()
-
-        if not article: # we could have a legacy URL that matches our blog mapping pattern (e.g. blogger)
-            article = legacy_id_mapping( 
-                permalink, config.BLOG["legacy_blog_software"] )
-            if article and config.BLOG["legacy_entry_redirect"]:
-                self.redirect('/' + article.permalink)
-                return
-
-        render_article(self, article)
+        render_article( self, permalink )
 
     @restful.methods_via_query_allowed    
     def post(self, year, month, perm_stem):
