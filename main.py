@@ -42,6 +42,9 @@ from handlers.bloog import blog, contact, cache_stats, timings, imagestore
 webapp.template.register_template_library('utils.django_libs.gravatar')
 webapp.template.register_template_library('utils.django_libs.description')
 
+# Configure logging for debug if in dev environment
+if config.DEBUG: logging.getLogger().setLevel(logging.DEBUG)
+
 # Log a message each time this module get loaded.
 logging.info('Loading %s, app version = %s',
              __name__, os.getenv('CURRENT_VERSION_ID'))
