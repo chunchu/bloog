@@ -56,7 +56,7 @@ class ImageHandler(webapp.RequestHandler):
       listRenderers[acceptType](self.response.out, images)
       return
 
-    logging.info("ImagestoreHandler#get for file: %s", id)
+    logging.debug("ImagestoreHandler#get for file: %s", id)
     img = None
     try:
       img = Image.get( id )
@@ -67,7 +67,7 @@ class ImageHandler(webapp.RequestHandler):
       self.response.out.write( "Could not find image: '%s'" % id )
       return
       
-    logging.info( "Found image: %s, mime type: %s", img.name, img.mimeType )
+    logging.debug( "Found image: %s, mime type: %s", img.name, img.mimeType )
     
     dl = self.request.get('dl') # optionally download as attachment
     if dl=='1' or dl=='true':
@@ -90,7 +90,7 @@ class ImageHandler(webapp.RequestHandler):
       self.response.headers['Content-Type'] = 'text/plain'
       self.response.out.write( "Unsupported image type: " + fileupload.filename )
       return
-    logging.info( "File upload: %s, mime type: %s", fileupload.filename, contentType )
+    logging.debug( "File upload: %s, mime type: %s", fileupload.filename, contentType )
     
     img = Image( name=fileupload.filename, data= fileupload.file.read(), 
         mimeType=contentType )
