@@ -330,7 +330,6 @@ def render_article(handler, article):
             handler.response.out.write(article.to_json())
             return
         else:
-            recaptcha = config.BLOG['recap_public_key']
             two_columns = article.two_columns
             if two_columns is None:
                 two_columns = article.is_big()
@@ -344,7 +343,8 @@ def render_article(handler, article):
                                    "allow_comments": allow_comments,
                                    "article": article,
                                    "title": title,
-                                   "captcha": recaptcha,
+                                   "taglist": ', '.join(article.tags),
+                                   "captcha": config.BLOG['recap_public_key'],
                                    "use_gravatars": config.BLOG['use_gravatars']
             })
     else:
@@ -369,6 +369,7 @@ class UnauthorizedHandler(webapp.RequestHandler):
 class RootHandler(restful.Controller):
     def get(self):
         logging.debug("RootHandler#get")
+        if view.render_if_cached( self ): return  # quick cache path
         page = view.ViewPage()
         page.render_query(
             self, 'articles', 
@@ -482,6 +483,7 @@ class BlogEntryHandler(restful.Controller):
         logging.debug("BlogEntryHandler#get for year %s, "
                       "month %s, and perm_link %s", 
                       year, month, perm_stem)
+        if view.render_if_cached( self ): return  # quick cache path
         permalink = '%s/%s/%s' % (year, month, perm_stem)
         article = db.Query(models.blog.Article). \
                      filter('permalink =', permalink).get()
@@ -597,7 +599,8 @@ class AtomHandler(webapp.RequestHandler):
             self.redirect(config.BLOG['master_atom_url'],permanent=True)
             return
         
-        logging.debug("Sending Atom feed")
+        logging.debug("ATOM feed")
+        if view.render_if_cached( self ): return  # quick cache path
         articles = db.Query(models.blog.Article). \
                       filter('article_type =', 'blog entry'). \
                       order('-published').fetch(limit=10)
@@ -613,6 +616,7 @@ class AtomHandler(webapp.RequestHandler):
 class SitemapHandler(webapp.RequestHandler):
   def get(self):
     logging.debug("Sending Sitemap")
+    if view.render_if_cached( self ): return  # quick cache path
     articles = db.Query(models.blog.Article).order('-published').fetch(1000)
     if articles:
       self.response.headers['Content-Type'] = 'text/xml'

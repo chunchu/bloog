@@ -150,6 +150,22 @@ def get_view_file(handler, params={}):
                 return {'file': filename, 'dirs': template_dirs}
     return {'file': 'notfound.html', 'dirs': template_dirs}
 
+def render_if_cached( handler ):
+  """Checks if there's a non-stale cached page for the given URL, and 
+     if there is, render it and return true without any further handling
+     of the request.  This allows a handler to, for instance, quickly 
+     render a page before doing a DB lookup"""
+     
+  if config.BLOG['cache_time'] and not users.get_current_user():
+    try: data = memcache.get(handler.request.url)
+    except ValueError: data = None
+    if data: 
+        handler.response.out.write( data )
+        logging.debug("QUICK render of: %s", handler.request.url)
+        return True  
+  return False
+
+
 class ViewPage(object):
     def __init__(self, cache_time=None):
         """Each ViewPage has a variable cache timeout"""
