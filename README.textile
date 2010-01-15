@@ -1,4 +1,4 @@
-h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily 
+h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily \
  tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
 
 
