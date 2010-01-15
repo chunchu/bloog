@@ -60,13 +60,15 @@ ROUTES = [
     ('/admin/timings/*$', timings.TimingHandler),
     ('/search', blog.SearchHandler),
     ('/contact/*$', contact.ContactHandler),
-    ('/imgstore/?([\w]*)/?', imagestore.ImageHandler),
+    ('/imgstore/?([\w]*)/?', imagestore.PicasaImageHandler \
+      if config.BLOG['picasa_image_store'] else imagestore.ImageHandler),
     ('/tag/(.*)', blog.TagHandler),
     (config.BLOG['master_atom_url'] + '/*$', blog.AtomHandler),
     (config.BLOG['legacy_atom_url'] + '/*$', blog.AtomHandler), # old Atom URL from legacy blog (should redirect)
     ('/articles', blog.ArticlesHandler),
     ('/sitemap.xml', blog.SitemapHandler),
     ('/(.*)', blog.ArticleHandler)]
+
 
 def main():
     path = timings.start_run()

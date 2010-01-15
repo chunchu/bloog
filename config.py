@@ -35,6 +35,7 @@ BLOG = {
     # You can override this default for each page through a handler's call to 
     #  view.ViewPage(cache_time=...)
     "cache_time": 0 if DEBUG else 3600,
+    #"cache_time":  3600,
 
     # Use the default YUI-based theme.
     # If another string is used besides 'default', calls to static files and
@@ -45,8 +46,8 @@ BLOG = {
     "use_gravatars": True,
     
     # reCAPTCHA settings.  See http://recaptcha.net/api/getkey
-    "recap_public_key": "",
-    "recap_private_key": "",
+    "recap_public_key": "CHANGEME",
+    "recap_private_key": "CHANGEME",
     
     # Do you want to be emailed when new comments are posted?
     "send_comment_notification": True,
@@ -55,14 +56,19 @@ BLOG = {
     # define it here and insert the necessary mapping code in the
     # legacy_id_mapping() function in ArticleHandler (blog.py).
     # Currently only "Drupal" is supported.
-    #"legacy_blog_software": None,
+    "legacy_blog_software": None,
     #"legacy_blog_software": "Drupal",
-    "legacy_blog_software": "Blogger",
+    #"legacy_blog_software": "Blogger",
     
     # If you want imported legacy entries _not_ mapped in the file above to
     # redirect to their new permanent URL rather than responding on their
     # old URL, set this flag to True.
-    "legacy_entry_redirect": True
+    "legacy_entry_redirect": True,
+    
+    "picasa_image_store": False, # if false, will use local datastore for uploaded images
+    "picasa_auth": { 'user':'CHANGEME', 
+        'password':'CHANGEME',  # your google accounts password :(
+        'album':'default' } #this must be 'default' or an ID (not name); see dev/scripts/picasa_get_album_id.py
 }
 
 PAGE = {
@@ -71,7 +77,7 @@ PAGE = {
     "yui_version": '2.8.0r4',
     "author_name": 'Thom',
     "author_email": BLOG['email'],
-    "ga_tracker": "", # Google Analytics tracker code
+    "ga_tracker": "UA-10492632", # Google Analytics tracker code
     "navlinks": [
         { "title": "Articles", "description": "Bits of Info", 
           "url": "/articles"},

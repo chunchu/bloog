@@ -35,16 +35,18 @@ __author__ = 'Thomas Nichols'
 
 import logging
 import re
+import gdata.photos, gdata.photos.service, gdata.alt.appengine
 from google.appengine.ext import webapp
-from google.appengine.api import memcache
 from utils import authorized
 from models.image import Image
+import config
+
 
 urlBase = '/imgstore/%s'
 
 class ImageHandler(webapp.RequestHandler):
-  def get(self,id):
   
+  def get(self,id):
     if not id: # perform 'list' function if no ID given.
       limit = int(self.request.get('limit','10'))
       if limit > 50: limit = 50 #enforce max
@@ -57,7 +59,6 @@ class ImageHandler(webapp.RequestHandler):
       return
 
     logging.debug("ImagestoreHandler#get for file: %s", id)
-    img = None
     try:
       img = Image.get( id )
       if not img: raise "Not found"
@@ -82,8 +83,8 @@ class ImageHandler(webapp.RequestHandler):
     fileupload = self.request.POST.get("file",None)
     if fileupload is None : return self.error(400)
     
-    # it doesn't seem possible for webob to get the Content-Type header for the individual part, 
-    # so we'll infer it from the file name.
+    # it doesn't seem possible for webob to get the Content-Type header for the 
+    # individual part, so we'll infer it from the file name.
     contentType = getContentType( fileupload.filename )
     if contentType is None: 
       self.error(400)
@@ -92,22 +93,44 @@ class ImageHandler(webapp.RequestHandler):
       return
     logging.debug( "File upload: %s, mime type: %s", fileupload.filename, contentType )
     
-    img = Image( name=fileupload.filename, data= fileupload.file.read(), 
-        mimeType=contentType )
-    img.put()
-    logging.info("Saved image to key %s", img.key() ) 
+    try:
+      (img_name, img_url) = self._store_image(
+        fileupload.filename, fileupload.file, contentType )
+      self.response.headers['Location'] = img_url
+      ex=None
+    except Exception, err:
+      logging.exception( "Error while storing image" )
+      self.error(400)
+      self.response.headers['Content-Type'] = 'text/plain'
+      self.response.out.write("Error uploading image: " + str(err))
+      return
     #self.redirect(urlBase % img.key() )  #dummy redirect is acceptable for non-AJAX clients,
-    # location header should be acceptable for true REST clients, however AJAX requests might not be able to access
-    # the location header so we'll write a 200 response with the new URL in the response body:
-    self.response.headers['Location'] = urlBase % img.key()
+    # location header should be acceptable for true REST clients, however AJAX requests 
+    # might not be able to access the location header so we'll write a 200 response with 
+    # the new URL in the response body:
     
     acceptType = self.request.accept.best_match( listRenderers.keys() )
     out = self.response.out
     if acceptType == 'application/json':
-      out.write( '{"name":"%s","href":"%s"}' % ( str(img.name), urlBase % img.key() ) )
+      self.response.headers['Content-Type'] = 'application/json'
+      out.write( '{"name":"%s","href":"%s"}' % ( img_name, img_url ) )
     elif re.search( 'html|xml', acceptType ):
-       out.write( '<a href="%s">%s</a>' % ( urlBase % img.key(), str(img.name) ) )
+      self.response.headers['Content-Type'] = 'text/html'
+      out.write( '<a href="%s">%s</a>' % ( img_url, img_name) )
     
+  def _store_image(self, name, file, content_type):
+    """POST handler delegates to this method for actual image storage; as
+    a result, alternate implementation may easily override the storage
+    mechanism without rewriting the same content-type handling. 
+        
+    This method returns a tuple of file name and image URL."""
+        
+    img = Image( name=name, data=file.read(), mimeType=content_type )
+    img.put()
+    logging.info("Saved image to key %s", img.key() ) 
+    return ( str(img.name), urlBase % img.key() )
+  
+  
   @authorized.role("admin")
   def delete(self,id):
     logging.info( "ImagestoreHandler#DELETE file: %s", id )
@@ -123,6 +146,48 @@ class ImageHandler(webapp.RequestHandler):
       return
     
     img.delete()
+
+class PicasaImageHandler(ImageHandler):
+  """
+  Upload photos to Picasa instead of the Appengine data store.  Note that 
+  GET requests are not handled by this handler, since the images are hosted on 
+  Picasa's servers.
+  See: http://code.google.com/apis/picasaweb/docs/1.0/developers_guide_python.html#PostPhotos
+  """
+  
+  def __init__(self):
+    # ElementTree uses expat which is not available on GAE; it is used by gdata's atom 
+    # module to parse the response.  The solution is to replace the built-in 
+    # ElementTree.XMLTreeBuilder with the SimpleXMLTreeBuilder implementation.
+    from xml.etree import ElementTree
+    from elementtree import SimpleXMLTreeBuilder
+    ElementTree.XMLTreeBuilder = SimpleXMLTreeBuilder.TreeBuilder 
+  
+    client = gdata.photos.service.PhotosService()
+    gdata.alt.appengine.run_on_appengine(client)
+    auth = config.BLOG['picasa_auth']
+    # TODO this could be a non-gmail account (if using Google hosted apps):
+    client.email = auth['user'] + "@gmail.com" 
+    client.password = auth['password']
+    client.ProgrammaticLogin()
+    self.client = client
+    self.auth = auth
+
+  def _store_image(self, name, file, content_type):
+    #logging.debug( "Storing image '%s' on Picasa", name )
+    raise Exception("Big oops!")
+    album_url = '/data/feed/api/user/%s/albumid/%s' % ( self.auth['user'], self.auth['album'] )
+    photo = self.client.InsertPhotoSimple( album_url, name, 
+      'Uploaded using the Bloog!', file, content_type=content_type )
+    logging.debug( "Uploaded photo to Picasa at %s", photo.content.src )
+    return ( photo.title.text, photo.content.src )
+
+
+  #def get(self,id): pass # TODO look up image and redirect to Picasa?
+    # Maybe this shouldn't be implemented, that way if a user moves from local image store
+    # to Picasa, they will still have access to local images when requested from a blog entry
+
+  #def delete(self,id): pass # TODO implement Picasa delete?
 
 
 def renderJsonList(out,imgList):
