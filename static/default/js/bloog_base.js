@@ -23,10 +23,7 @@
 **/
 YAHOO.namespace('bloog');
 
-YAHOO.bloog.handleCancel = function () {
-    this.cancel();
-};
-
+YAHOO.bloog.handleCancel = function () { this.cancel(); };
 
 Ojay.changeAlias('$$'); // like Prototype.js
 $ = function(id) { return Ojay.byId(id).node; };
@@ -40,3 +37,15 @@ Ojay.onDOMReady(function() {
   });
 });
 
+// Dummy object for platforms w/o a debug console.
+if ( typeof( console ) == "undefined" ) {
+	console = {
+		log : function() {},
+		debug : function() {},
+		info : function() {},
+		warn : function() {},
+		error : function() {}
+	}
+}
+// For IE8 and earlier Webkit builds:
+if ( ! console.debug ) console.debug = console.log;
