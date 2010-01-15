@@ -1,5 +1,4 @@
-h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily \
-tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
+h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
 
 
 h2. Instructions
@@ -11,8 +10,8 @@ bc.  $ git submodule init
 h3. Minified Resources
 
 This version also uses minified JS and CSS resources in 'hosted' mode.  This allows 
-you to make quick changes locally (and easily debug code with correct line numbers) \
-while still serving content as quickly as possible to your visitors.  This means
+ you to make quick changes locally (and easily debug code with correct line numbers) 
+ while still serving content as quickly as possible to your visitors.  This means
  if you make changes to JS or CSS files, you /must/ run @dev/minify.sh@ before 
  updating your application using @appcfg@
 
@@ -49,8 +48,7 @@ Change the @application@ name in app.yaml, and upload your app:
 
 bc.  $ appcfg.py update .
 
-For more information on AppEngine, see the 
- "Getting Started documentation":http://code.google.com/appengine/docs/python/gettingstarted/ .
+For more information on AppEngine, see the "Getting Started documentation":http://code.google.com/appengine/docs/python/gettingstarted/ .
 
 
 h2. Changelog
@@ -76,5 +74,4 @@ Quick list of changes I've made from Katz' original code:
 
 h2. Final Notes
 
-The image upload feature uses an icon from FamFamFam's "Silk":http://www.famfamfam.com/lab/icons/silk/ 
- icon set.
+The image upload feature uses an icon from FamFamFam's "Silk":http://www.famfamfam.com/lab/icons/silk/ icon set.
