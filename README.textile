@@ -1,4 +1,5 @@
-h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
+h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily 
+ tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
 
 
 h2. Instructions
@@ -7,21 +8,49 @@ Once you've checked out the code, initialize the external modules like so:
 
 bc.  $ git submodule init
 
-This version also uses minified Javascript files (it's hard-coded for now) - you must generate the minified scripts from the source before uploading the  application, like so:
+h3. Minified Resources
 
-bc.  $ dev/scripts/jsmin.py static/default/js/bloog_base.js > static/default/js/bloog_base-min.js
- $ dev/scripts/jsmin.py static/default/js/bloog_admin.js > static/default/js/bloog_admin-min.js
- $ dev/scripts/jsmin.py static/default/js/bloog_comments.js > static/default/js/bloog_comments-min.js
+This version also uses minified JS and CSS resources in 'hosted' mode.  This allows 
+ you to make quick changes locally (and easily debug code with correct line numbers) 
+ while still serving content as quickly as possible to your visitors.  This means
+ if you make changes to JS or CSS files, you /must/ run @dev/minify.sh@ before 
+ updating your application using @appcfg@
+
+h3. Locally Hosted Resources during Development
+
+Sometimes I'm offline when doing development so YUI resources are served locally
+ during development, but referenced from Yahoo's CDN when the app is hosted live.
+
+Download the "latest build":http://yuilibrary.com/downloads/ and copy the 'build' 
+ directory to @static/hosted/yui@
+
+h3. Picasa Image Store
+
+I've developed two modes of hosting uploaded images from Bloog - a local image 
+ store and hosting from Picasa.  If you want to host your images from Picasa (to 
+ save the data API cost) you need to also download the gdata and supporting libraries. 
+ I've automated this in a script: @dev/gdata-install.sh@.  Note that it must be run 
+ from your bloog base directory.  The script will download and extract the necessary 
+ files into your bloog project.
+ 
+Next, you need to determine what album you want to upload images to.  Picasa can 
+ automatically use an album named 'default.'  However, if you want to use some 
+ other Picasa album that you've created, you need to determine that album's ID.  
+ Edit @dev/scripts/picasa_get_album_id.py@ (inserting your user name and the name
+ of the album you've created).  The script will spit out that album's ID, and also
+ list the photos already present in that album (as a sanity check to make sure 
+ that album is publicly accessible).  Then take that album ID number and put it 
+ in the 'picasa_auth_info' section in @config.py@.
+ 
+
+h2. Deploying to AppEngine
 
 Change the @application@ name in app.yaml, and upload your app:
 
 bc.  $ appcfg.py update .
-    
-Also if you want to use locally hosted YUI files while developing, download the "latest build":http://yuilibrary.com/downloads/ and copy the 'build' directory to @static/hosted/yui@
 
-h3. More Info
-
-For more information on AppEngine, see the "Getting Started documentation":http://code.google.com/appengine/docs/python/gettingstarted/ .
+For more information on AppEngine, see the 
+ "Getting Started documentation":http://code.google.com/appengine/docs/python/gettingstarted/ .
 
 
 h2. Changelog
@@ -38,11 +67,14 @@ Quick list of changes I've made from Katz' original code:
 * Support for Blogger legacy URL mapping
 * Fixed search
 * Recaptcha integration
+* Picasa image upload
+* Local image upload and hosting
 * Google Analytics support
 * Commenter names link to their homepage
 * Upgrated Syntaxhighlighter to hosted version
-* Configurable VUI version
+* Configurable YUI version
 
 h2. Final Notes
 
-The image upload feature uses an icon from FamFamFam's "Silk":http://www.famfamfam.com/lab/icons/silk/ icon set.
+The image upload feature uses an icon from FamFamFam's "Silk":http://www.famfamfam.com/lab/icons/silk/ 
+ icon set.
