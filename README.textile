@@ -9,37 +9,39 @@ bc.  $ git submodule init
 
 h3. Minified Resources
 
-This version also uses minified JS and CSS resources in 'hosted' mode.  This allows 
- you to make quick changes locally (and easily debug code with correct line numbers) 
- while still serving content as quickly as possible to your visitors.  This means
+My fork of Bloog uses minified JS and CSS resources when hosted online, but un-
+ minified versions when run locally.  This allows you to make quick changes 
+ during development (and get accurate line numbers when debugging) while still 
+ serving content as quickly as possible to your visitors.  However, this means 
  if you make changes to JS or CSS files, you /must/ run @dev/minify.sh@ before 
- updating your application using @appcfg@
+ uploading your application via @appcfg.py update@.
 
 h3. Locally Hosted Resources during Development
 
 Sometimes I'm offline when doing development so YUI resources are served locally
- during development, but referenced from Yahoo's CDN when the app is hosted live.
-
-Download the "latest build":http://yuilibrary.com/downloads/ and copy the 'build' 
- directory to @static/hosted/yui@
+ during development (i.e. when @debug@ mode is turned on), but those files are 
+ served from Yahoo's CDN when the app is hosted live.  Run @dev/yui-install.sh@ 
+ which will download the YUI dependencies to the @static/hosted@ folder.  These
+ files are not uploaded to the AppEngine servers, since they are not used when 
+ the app is live.
 
 h3. Picasa Image Store
 
-I've developed two modes of hosting uploaded images from Bloog - a local image 
- store and hosting from Picasa.  If you want to host your images from Picasa (to 
- save the data API cost) you need to also download the gdata and supporting libraries. 
- I've automated this in a script: @dev/gdata-install.sh@.  Note that it must be run 
- from your bloog base directory.  The script will download and extract the necessary 
- files into your bloog project.
+There are two modes for uploading images to your blog - local image storage, and 
+ hosting from Picasa.  If you want to host your images on Picasa (to save on data 
+ API costs) you need to also download the gdata API and supporting libraries. 
+ To download these dependencies, run @dev/gdata-install.sh@ from your bloog 
+ base directory.  The script will download and extract the necessary files into 
+ your bloog project.
  
 Next, you need to determine what album you want to upload images to.  Picasa can 
  automatically use an album named 'default.'  However, if you want to use some 
  other Picasa album that you've created, you need to determine that album's ID.  
- Edit @dev/scripts/picasa_get_album_id.py@ (inserting your user name and the name
- of the album you've created).  The script will spit out that album's ID, and also
- list the photos already present in that album (as a sanity check to make sure 
- that album is publicly accessible).  Then take that album ID number and put it 
- in the 'picasa_auth_info' section in @config.py@.
+ Edit and run @dev/scripts/picasa_get_album_id.py@ (inserting your user name and 
+ the name of the album you've created).  The script will spit out that album's 
+ ID, and also list the photos already present in that album (as a sanity check to 
+ make sure that album is publicly accessible).  Then take that album ID number 
+ and put it in the @picasa_auth@ section of @config.py@.
  
 
 h2. Deploying to AppEngine
@@ -55,19 +57,21 @@ h2. Changelog
 
 Quick list of changes I've made from Katz' original code:
 
+* Recaptcha integration for comments
+* Picasa image upload
+* Local image upload and hosting
+* Improved memcache lookup to reduce datastore access
+* Google Analytics support
+* Use minified JS and CSS resources in hosted mode
+* Summary and full-content Atom feeds
+* Added Tag cloud
 * Editor tweaks:
-** view raw HTML
-** Switchable Textile/rich text support(soon)
+** View/edit raw HTML in posts
 ** Inline code tag as well as &lt;pre&gt; blocks
 ** Admin's name and email are inserted by default for comment replies
 ** Comment subject defaults to "Re: &lt;parent subject&gt;"
 ** Configurable post date & legacy ID if manually uploading old posts.
-* Support for Blogger legacy URL mapping
-* Fixed search
-* Recaptcha integration
-* Picasa image upload
-* Local image upload and hosting
-* Google Analytics support
+* Blogger legacy URL mapping support
 * Commenter names link to their homepage
 * Upgrated Syntaxhighlighter to hosted version
 * Configurable YUI version
