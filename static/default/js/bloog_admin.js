@@ -400,15 +400,20 @@ YAHOO.bloog.initAdmin = function() {
       YAHOO.util.Connect.setForm(form, true);
       YAHOO.util.Connect.asyncRequest( 'POST', form.action, { 
           upload: function(xhr) {
-            var editor = YAHOO.bloog.editor;
+            var resp = xhr.responseText;
+            if ( resp.search('error','i') >=0 ) { // we've got an error!
+              console.log("Error!", resp); alert(resp);
+              return;
+            }
+            // else complete successful response:
             YAHOO.bloog.uploadPanel.hide();
+            var editor = YAHOO.bloog.editor;
             if ( $$.Forms.getData(form).insertAction == 'link' ) 
               editor.execCommand('inserthtml', xhr.responseText + " " );
             else { // open up 'image insert' dialog and insert correct values in form fields.
               editor._handleInsertImageClick.bind(YAHOO.bloog.editor)();
               editor.execCommand('insertimage');
-              editor._windows
-              var Dom = YAHOO.util.Dom
+              var Dom = YAHOO.util.Dom,
                 editorID = editor.get('id');
               var url = Dom.get(editorID + '_insertimage_url'),
                 title = Dom.get(editorID + '_insertimage_title'),
@@ -433,6 +438,8 @@ YAHOO.bloog.initAdmin = function() {
                    { text: "Cancel", handler: YAHOO.bloog.handleCancel, isDefault: true } ]
     });
     YAHOO.bloog.uploadPanel.setHeader("Image Upload");
+    YAHOO.bloog.uploadPanel.beforeShowEvent.subscribe(
+      function() {$$('#imageUpload .errorMsg').setContent('');});
     YAHOO.bloog.uploadPanel.render();
     
     $$('#moreOptionsLink').on('click',function(link,e) {
