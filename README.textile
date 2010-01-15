@@ -1,5 +1,5 @@
 h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily \
- tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
+tweaked from "Bill Katz' Bloog":http://github.com/DocSavage/bloog
 
 
 h2. Instructions
@@ -11,8 +11,8 @@ bc.  $ git submodule init
 h3. Minified Resources
 
 This version also uses minified JS and CSS resources in 'hosted' mode.  This allows 
- you to make quick changes locally (and easily debug code with correct line numbers) 
- while still serving content as quickly as possible to your visitors.  This means
+you to make quick changes locally (and easily debug code with correct line numbers) \
+while still serving content as quickly as possible to your visitors.  This means
  if you make changes to JS or CSS files, you /must/ run @dev/minify.sh@ before 
  updating your application using @appcfg@
 
