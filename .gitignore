@@ -6,3 +6,7 @@
 Thumbs.db
 static/default/js/*-min.js
 static/default/*-min.css
+static/hosted
+utils/external/gdata
+utils/external/atom
+utils/external/elementtree
