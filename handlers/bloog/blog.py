@@ -56,7 +56,7 @@ from google.appengine.api import urlfetch
 from handlers import restful
 from utils import authorized
 from utils import sanitizer
-from utils.external import captcha
+import captcha
 import models
 import view
 import config
@@ -263,7 +263,7 @@ def process_comment_submission(handler, article):
 
     # Generate a thread string.
     if 'thread' not in property_hash:
-        matchobj = re.match(r'[^#]+#comment-(?P<key>\w+)', 
+        matchobj = re.match(r'[^#]+#comment-(?P<key>[\w-]+)', 
                             property_hash['key'])
         if matchobj:
             logging.debug("Comment has parent: %s", matchobj.group('key'))
@@ -491,9 +491,9 @@ class BlogEntryHandler(restful.Controller):
 
     @authorized.role("admin")
     def put(self, year, month, perm_stem):
-        permalink = year + '/' + month + '/' + perm_stem
         logging.debug("BlogEntryHandler#put")
-        process_article_edit(handler = self, permalink = permalink)
+        process_article_edit(self, 
+          permalink = '%s/%s/%s' % (year, month, perm_stem))
 
     @authorized.role("admin")
     def delete(self, year, month, perm_stem):
