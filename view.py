@@ -275,6 +275,7 @@ class ViewPage(object):
         itself.
         """
         tags = filter( lambda t: t['count']>0, tags )
+        if len(tags)<1: return tags #empty sequence
         vals = list( t['count'] for t in tags )
         maxC= max(vals)
         minC= float(min(vals))
