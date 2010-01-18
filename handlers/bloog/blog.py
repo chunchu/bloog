@@ -556,6 +556,7 @@ class MonthHandler(restful.Controller):
         iyear = string.atoi(year)
         imonth = string.atoi(month)
         start_date = datetime.datetime(iyear, imonth, 1)
+        if imonth==12: iyear+=1 ; imonth=0
         end_date = datetime.datetime(iyear, imonth+1, 1)
         view.ViewPage().render_query( self, 'articles', 
             db.Query(models.blog.Article).order('-published'). \
