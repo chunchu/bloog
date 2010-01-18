@@ -339,13 +339,14 @@ def render_article(handler, path):
         #  to article properties, e.g. 3 -> legacy_id property
         article = legacy_id_mapping(path, config.BLOG["legacy_blog_software"])
         if article and config.BLOG["legacy_entry_redirect"]:
-            self.redirect('/' + article.permalink)
+            handler.redirect('/' + article.permalink)
             return
-        else: # not found.  Could do --> self.redirect('/404.html')
+        else: # not found.  Could do --> handler.redirect('/404.html')
             handler.error(404)
             view.ViewPage(cache_time=36000).render(handler, 
                 {'module_name': 'blog', 'handler_name': 'notfound'})
-                
+            return
+
     # Check if client is requesting javascript
     if client_wants_json:
         handler.response.headers['Content-Type'] = json_type
