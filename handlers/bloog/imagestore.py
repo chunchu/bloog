@@ -160,8 +160,8 @@ class PicasaImageHandler(ImageHandler):
     # module to parse the response.  The solution is to replace the built-in 
     # ElementTree.XMLTreeBuilder with the SimpleXMLTreeBuilder implementation.
     from xml.etree import ElementTree
-    from elementtree import SimpleXMLTreeBuilder
-    ElementTree.XMLTreeBuilder = SimpleXMLTreeBuilder.TreeBuilder 
+    import utils.external.elementtree.SimpleXMLTreeBuilder as SimpleXML
+    ElementTree.XMLTreeBuilder = SimpleXML.TreeBuilder 
   
     client = gdata.photos.service.PhotosService()
     gdata.alt.appengine.run_on_appengine(client)
