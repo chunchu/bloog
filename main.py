@@ -32,8 +32,9 @@ sys.path.insert(0, config.APP_ROOT_DIR)
 sys.path.insert(1, os.path.join(config.APP_ROOT_DIR, 'utils/external'))
 
 import logging
-import wsgiref.handlers
+#import wsgiref.handlers
 from firepython.middleware import FirePythonWSGI
+from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import webapp
 from google.appengine.api import users
 from handlers.bloog import blog, contact, cache_stats, timings, imagestore
@@ -75,7 +76,10 @@ def main():
     application = webapp.WSGIApplication(ROUTES, debug=config.DEBUG)
     if users.is_current_user_admin():
         application = FirePythonWSGI(application)
-    wsgiref.handlers.CGIHandler().run(application)
+    # Attempt to fix KeyError: 'CONTENT_TYPE' that is appearing in logs; see:
+    # http://code.google.com/p/googleappengine/issues/detail?id=2040
+    #wsgiref.handlers.CGIHandler().run(application)
+    run_wsgi_app(application)
     timings.stop_run(path)
 
 if __name__ == "__main__":
