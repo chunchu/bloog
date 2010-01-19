@@ -398,6 +398,7 @@ class RootHandler(restful.Controller):
 class ArticlesHandler(restful.Controller):
     def get(self):
         logging.debug("ArticlesHandler#get")
+        if view.render_if_cached( self ) : return
         page = view.ViewPage()
         page.render_query(
             self, 'articles',
@@ -510,6 +511,7 @@ class BlogEntryHandler(restful.Controller):
 
 class TagHandler(restful.Controller):
     def get(self, encoded_tag):
+        if view.render_if_cached( self ) : return
         tag =  re.sub('(%25|%)(\d\d)', 
                       lambda cmatch: chr(string.atoi(cmatch.group(2), 16)),                 
                       encoded_tag)   # No urllib.unquote in AppEngine?
@@ -521,6 +523,7 @@ class TagHandler(restful.Controller):
 
 class SearchHandler(restful.Controller):
     def get(self):
+        if view.render_if_cached( self ) : return
         from google.appengine.api import datastore_errors
         search_term = self.request.get("s")
         query_string = 's=' + urllib.quote_plus(search_term) + '&'
