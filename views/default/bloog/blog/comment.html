@@ -4,13 +4,14 @@
             {% if use_gravatars and comment.email %}
             <img class="gravatar" src="http://www.gravatar.com/avatar/{{comment.email|gravatar}}?s=32&r=g&d=identicon" alt="avatar" />
             {% endif %}
-            <span class="subject">{{ comment.title|default:"Re: Article" }}</span> by 
+            <span class="subject">{{ comment.title|default:"Re: Article" }}</span>
+
+            <span class="date">{{ comment.published.date }}</span>
             <span class="user">{% if comment.homepage %}
               <a href='{{comment.homepage}}' title='commenter homepage'>{{ comment.name|default:"Anonymous" }}</a>
               {% else %}
                 {{ comment.name|default:"Anonymous" }}
               {% endif %}</span>
-            <span class="date">({{ comment.published.date }})</span>
         </p>
         <div class="comment_text">
             {{ comment.body }}

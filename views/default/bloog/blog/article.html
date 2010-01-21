@@ -54,15 +54,15 @@
     </div>
 {% endif %}
     <div id="comments_wrapper">
-        {% if allow_comments %}
-        <a class="replybtn" href="#">Add a comment...</a>
-        {% else %}
-            {% if article.num_comments %}
-            <p>Comments are closed</p>
-            {% endif %}
-        {% endif %}
         {% if allow_comments or article.num_comments %}
         <div id="comments" class="section">
+            {% if allow_comments %}
+            <span class="commentbtn"><a class='replybtn' href="#">Add Comment</a></span>
+            {% else %}
+                {% if article.num_comments %}
+                <p class='commentbtn'>(Comments are closed)</p>
+                {% endif %}
+            {% endif %}
             <h3><span id="num_comments">{{ article.num_comments }}</span> Comments</h3>
             <ol id="commentslist">
             {% for comment in article.comments %}
