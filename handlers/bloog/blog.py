@@ -299,8 +299,11 @@ def process_comment_submission(handler, article):
     # Notify the author of a new comment (from matteocrippa.it)
     if config.BLOG['send_comment_notification'] and not users.is_current_user_admin():
         recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'])
-        body = ("A new comment has just been posted on %s/%s by %s:\n\n%s"
-                % (config.BLOG['root_url'], article.permalink, comment.name, comment.body))
+        article_link = config.BLOG['root_url'] + "/" + article.permalink
+        comment_link = article_link + '#comment-' + comment.thread
+        body = ('''A new comment has just been posted on %s by %s:\n\n"%s"
+                \n\nReply to the comment here: %s'''
+                % (article_link, comment.name, comment.body, comment_link))
         mail.send_mail(sender=config.BLOG['email'],
                        to=recipient,
                        subject="New comment by %s" % (comment.name),
