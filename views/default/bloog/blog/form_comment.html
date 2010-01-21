@@ -41,6 +41,7 @@
 $$.onDOMReady( function() {
  $('commentEmail').value = '{{ author_email }}';
  $('commentName').value = '{{ author_name }}';
+ $('commentHomepage').value = '{{ blog.root_url }}';
 });
 </script>
 {% endif %}
