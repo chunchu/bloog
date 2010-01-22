@@ -62,8 +62,9 @@ def find_file(tree, path):
     else:
         return None
 
-def invalidate_cache():
-    memcache.flush_all()
+def invalidate_cache(key=None):
+    if not key: memcache.flush_all()
+    else: memcache.delete(key)
 
 def to_filename(camelcase_handler_str):
     filename = camelcase_handler_str[0].lower()

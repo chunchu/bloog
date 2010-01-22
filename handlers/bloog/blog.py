@@ -479,7 +479,7 @@ def process_comment_submission(handler, parent=None):
         { 'comment': comment, "use_gravatars": config.BLOG["use_gravatars"] },
         debug=config.DEBUG)
     handler.response.out.write(response)
-    view.invalidate_cache()  # TODO invalidate cache for just this page
+    view.invalidate_cache(comment.article.permalink)
 
 class CommentHandler(restful.Controller):
     def get(self,comment_id):
@@ -495,7 +495,7 @@ class CommentHandler(restful.Controller):
           if not parent_comment:
               logging.warning("No parent comment found for %s", parent_comment_id)
               self.error(400)
-              returm
+              return
         
         process_comment_submission(self, parent_comment)
 
@@ -509,8 +509,7 @@ class CommentHandler(restful.Controller):
         logging.debug("Deleting comment %s", comment_id)
         comment = models.blog.Comment.get(db.Key(comment_id))
         comment.delete()
-        # TODO really only need to invalidate cache for that one page.
-        view.invalidate_cache()
+        view.invalidate_cache(comment.article.permalink)
         restful.send_successful_response(self, "/")
 
 class TagHandler(restful.Controller):
