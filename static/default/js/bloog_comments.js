@@ -56,9 +56,9 @@ YAHOO.bloog.initComments = function() {
           .setContent("Submit!");
     }
     var handleFailure = function(o) {
-        var msg = o.status ? o.status : 
-          o.message ? o.message : "Unknown error: " + o;
-        alert("Error saving your comment! " + o.status );
+        var msg = o.statusText ? o.statusText : 
+          o.status ? o.status : "Unknown error: " + o;
+        alert("Error saving your comment!\n" + msg );
         // re-enable submit btn in event of failure:
         $$(YAHOO.bloog.commentDialog.defaultHtmlButton)
           .removeClass('yui-button-disabled')
@@ -103,9 +103,6 @@ YAHOO.bloog.initComments = function() {
             return false;
         }
         return true;
-    };
-    var handleDialogSuccess = function() {
-        alert("Success from commentDialog");
     };
 
     YAHOO.bloog.commentEditor = new YAHOO.widget.SimpleEditor(
@@ -161,7 +158,7 @@ YAHOO.bloog.initComments = function() {
             showRTE(link.node);
         }
     }));
-    
+
 };
 
 Ojay.onDOMReady(YAHOO.bloog.initComments);

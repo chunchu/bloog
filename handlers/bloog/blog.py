@@ -254,7 +254,7 @@ def process_comment_submission(handler, article):
         
         if not cap_validation.is_valid: 
           logging.info( "Invalid captcha: %s", cap_validation.error_code )
-          handler.error(401)      # Unauthorized
+          handler.response.set_status(401, 'Invalid Captcha') # Unauthorized
           return
           
     if 'key' not in property_hash and 'thread' not in property_hash:
