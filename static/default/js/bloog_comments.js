@@ -39,14 +39,16 @@ YAHOO.bloog.initComments = function() {
     }
 
     var handleSuccess = function(parent_id,o) {
+        console.debug("Parent id:", parent_id);
         var response = o.responseText;
         // Insert the comment into the appropriate place then hide dialog.
-        if (parent_id == '') // Should be inserted at top
-            $$('#commentslist').insert(response, 'top');
+        if ( ! parent_id ) // Should be inserted at the bottom
+            $$('#commentslist').insert(response, 'bottom');
         else $$('#' + parent_id).insert(response, 'after');
 
-        var num_comments = Number($('num_comments').innerHTML) + 1;
-        $$('#num_comments').setContent(String(num_comments));
+        var num_comments = String(Number($('num_comments').innerHTML) + 1);
+        $$('#num_comments').setContent(num_comments);
+        $$('#article .comments a').setContent(num_comments);
         YAHOO.bloog.commentEditor.hide();
         YAHOO.bloog.commentDialog.hide();
 
@@ -73,9 +75,9 @@ YAHOO.bloog.initComments = function() {
           .setContent("Submitting...");
         try {
             YAHOO.bloog.commentEditor.saveHTML();
-            var postData = $$.Forms.getQueryString($('commentDialogForm'));
-            // split action into article ID (0) and parent comment ID (1)
-            var action = $('commentDialogForm').action.split('#');
+            var form = $('commentDialogForm')
+            var postData = $$.Forms.getQueryString(form);
+            var action = form.action.split('#'); //get parent ID if it exists
             var cObj = YAHOO.util.Connect.asyncRequest(
                 'POST', action[0], 
                 { success: handleSuccess.partial(action[1]), failure: handleFailure },
@@ -153,8 +155,8 @@ YAHOO.bloog.initComments = function() {
     $$('div#comments_wrapper').on('click', Ojay.delegateEvent({
         'a.replybtn': function(link, e) {
             e.stopDefault();
-            $('commentKey').value = link.node.href;
             $('commentDialogForm').action = link.node.href;
+            //$('commentKey').value = link.node.href;
             showRTE(link.node);
         }
     }));

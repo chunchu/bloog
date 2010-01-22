@@ -21,6 +21,7 @@
                 <input type="text" id="commentTitle" name="title" size="50" />
             </p>
             <input type='hidden' id='commentKey' name='key' />
+            <input type='hidden' name='article_id' value='{{ article.permalink }}' />
             <textarea name="body" id="commentBody" cols="50" rows="10">
                 <strong>Please enter your comment here.</strong>
             </textarea>

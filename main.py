@@ -60,6 +60,7 @@ ROUTES = [
     ('/admin/cache_stats/*$', cache_stats.CacheStatsHandler),
     ('/admin/timings/*$', timings.TimingHandler),
     ('/search', blog.SearchHandler),
+    ('/comment/?([\w-]+)?', blog.CommentHandler),
     ('/contact/*$', contact.ContactHandler),
     ('/imgstore/?([\w]*)/?', imagestore.PicasaImageHandler \
       if config.BLOG['picasa_image_store'] else imagestore.ImageHandler),

@@ -226,98 +226,6 @@ def process_article_submission(handler, article_type):
     else:
         handler.error(400)
 
-def process_comment_submission(handler, article):
-    sanitize_comment = get_sanitizer_func(handler,
-                                          allow_attributes=['href', 'src'],
-                                          blacklist_tags=['img', 'script'])
-    property_hash = restful.get_sent_properties(handler.request.get, 
-        [('name', cgi.escape),
-         ('email', cgi.escape),
-         ('homepage', cgi.escape),
-         ('title', cgi.escape),
-         ('body', sanitize_comment),
-         ('key', cgi.escape),
-         'thread',    # If it's given, use it.  Else generate it.
-         'recaptcha_challenge_field',
-         'recaptcha_response_field',
-         ('published', get_datetime)])
-
-    # If we aren't administrator, abort if bad captcha
-    if not users.is_current_user_admin():
-        cap_challenge = property_hash.get('recaptcha_challenge_field')
-        cap_response = property_hash.get('recaptcha_response_field')
-        
-        cap_validation = captcha.RecaptchaResponse(False)
-        if cap_challenge and cap_response:
-          cap_validation = captcha.submit( cap_challenge, cap_response, 
-            config.BLOG['recap_private_key'], handler.request.remote_addr )
-        
-        if not cap_validation.is_valid: 
-          logging.info( "Invalid captcha: %s", cap_validation.error_code )
-          handler.response.set_status(401, 'Invalid Captcha') # Unauthorized
-          return
-          
-    if 'key' not in property_hash and 'thread' not in property_hash:
-        handler.error(401)
-        return
-
-    # Generate a thread string.
-    if 'thread' not in property_hash:
-        matchobj = re.match(r'[^#]+#comment-(?P<key>[\w-]+)', 
-                            property_hash['key'])
-        if matchobj:
-            logging.debug("Comment has parent: %s", matchobj.group('key'))
-            comment_key = matchobj.group('key')
-            # TODO -- Think about GQL injection security issue since 
-            # it can be submitted by public
-            parent = models.blog.Comment.get(db.Key(comment_key))
-            thread_string = parent.next_child_thread_string()
-        else:
-            logging.debug("Comment is off main article")
-            comment_key = None
-            thread_string = article.next_comment_thread_string()
-        if not thread_string:
-            handler.error(400)
-            return
-        property_hash['thread'] = thread_string
-        del property_hash['key']
-
-    # Get and store some pieces of information from parent article.
-    # TODO: See if this overhead can be avoided
-    if not article.num_comments: article.num_comments = 1
-    else: article.num_comments += 1
-    property_hash['article'] = article.put()
-
-    try:
-        comment = models.blog.Comment(**property_hash)
-        comment.put()
-    except:
-        logging.debug("Bad comment: %s", property_hash)
-        handler.error(400)
-        return
-        
-    # Notify the author of a new comment (from matteocrippa.it)
-    if config.BLOG['send_comment_notification'] and not users.is_current_user_admin():
-        recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'])
-        article_link = config.BLOG['root_url'] + "/" + article.permalink
-        comment_link = article_link + '#comment-' + comment.thread
-        body = ('''A new comment has just been posted on %s by %s:\n\n"%s"
-                \n\nReply to the comment here: %s'''
-                % (article_link, comment.name, comment.body, comment_link))
-        mail.send_mail(sender=config.BLOG['email'],
-                       to=recipient,
-                       subject="New comment by %s" % (comment.name),
-                       body=body)
-
-    # Render just this comment and send it to client
-    view_path = view.find_file(view.templates, "bloog/blog/comment.html")
-    response = template.render(
-        os.path.join("views", view_path),
-        { 'comment': comment, "use_gravatars": config.BLOG["use_gravatars"] },
-        debug=config.DEBUG)
-    handler.response.out.write(response)
-    view.invalidate_cache()
-
 def render_article(handler, path):
     # Handle precomputed legacy aliases
     # TODO: Use hash for case-insensitive lookup
@@ -509,6 +417,120 @@ class BlogEntryHandler(restful.Controller):
         for key in article.tag_keys:
             db.get(key).counter.decrement()
         article.delete()
+        view.invalidate_cache()
+        restful.send_successful_response(self, "/")
+
+def process_comment_submission(handler, parent=None):
+    sanitize_comment = get_sanitizer_func(handler,
+                                          allow_attributes=['href', 'src'],
+                                          blacklist_tags=['img', 'script'])
+    property_hash = restful.get_sent_properties(handler.request.get, 
+        [('name', cgi.escape),
+         ('email', cgi.escape),
+         ('homepage', cgi.escape),
+         ('title', cgi.escape),
+         ('body', sanitize_comment),
+         ('article_id', cgi.escape),
+         'recaptcha_challenge_field',
+         'recaptcha_response_field',
+         ('published', get_datetime)])
+
+    # If we aren't administrator, abort if bad captcha
+    if not users.is_current_user_admin():
+        cap_challenge = property_hash.get('recaptcha_challenge_field')
+        cap_response = property_hash.get('recaptcha_response_field')
+        
+        cap_validation = captcha.RecaptchaResponse(False)
+        if cap_challenge and cap_response:
+          cap_validation = captcha.submit( cap_challenge, cap_response, 
+            config.BLOG['recap_private_key'], handler.request.remote_addr )
+        
+        if not cap_validation.is_valid: 
+          logging.info( "Invalid captcha: %s", cap_validation.error_code )
+          handler.response.set_status(401, 'Invalid Captcha') # Unauthorized
+          return
+          
+    if 'article_id' not in property_hash:
+        handler.error(400)
+        return
+    article = db.Query(models.blog.Article).filter(
+        'permalink =', property_hash['article_id'] ).get()
+
+    # Generate a thread string.
+    if parent:
+        logging.debug("Comment has parent: %s", parent.key)
+        thread_string = parent.next_child_thread_string()
+    else:
+        logging.debug("Comment is off main article")
+        thread_string = article.next_comment_thread_string()
+        
+    property_hash['thread'] = thread_string
+
+    # Get and store some pieces of information from parent article.
+    # TODO: See if this overhead can be avoided
+    if not article.num_comments: article.num_comments = 1
+    else: article.num_comments += 1
+    property_hash['article'] = article.put()
+
+    try:
+        comment = models.blog.Comment(**property_hash)
+        comment.put()
+    except:
+        logging.debug("Bad comment: %s", property_hash)
+        handler.error(400)
+        return
+        
+    # Notify the author of a new comment (from matteocrippa.it)
+    if config.BLOG['send_comment_notification'] and not users.is_current_user_admin():
+        recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'])
+        article_link = config.BLOG['root_url'] + "/" + article.permalink
+        comment_link = '%s#comment-%s' % (article_link, comment.key)
+        body = ('''A new comment has just been posted on %s by %s:\n\n"%s"
+                \n\nReply to the comment here: %s'''
+                % (article_link, comment.name, comment.body, comment_link))
+        mail.send_mail(sender=config.BLOG['email'],
+                       to=recipient,
+                       subject="New comment by %s" % (comment.name),
+                       body=body)
+
+    # Render just this comment and send it to client
+    view_path = view.find_file(view.templates, "bloog/blog/comment.html")
+    response = template.render(
+        os.path.join("views", view_path),
+        { 'comment': comment, "use_gravatars": config.BLOG["use_gravatars"] },
+        debug=config.DEBUG)
+    handler.response.out.write(response)
+    view.invalidate_cache()  # TODO invalidate cache for just this page
+
+class CommentHandler(restful.Controller):
+    def get(self,comment_id):
+        logging.debug("CommentHandler#get")
+        self.response.headers['Content-Type'] = 'text/plain'
+        self.response.out.write('Comment!') # TODO return comment
+        
+    def post(self,parent_comment_id):
+        logging.debug("CommentHandler#post; parent: %s", parent_comment_id)
+        parent_comment=None
+        if parent_comment_id:
+          parent_comment = models.blog.Comment.get(db.Key(parent_comment_id))
+          if not parent_comment:
+              logging.warning("No parent comment found for %s", parent_comment_id)
+              self.error(400)
+              returm
+        
+        process_comment_submission(self, parent_comment)
+
+    @restful.methods_via_query_allowed    
+    def put(self,comment_id): # update a comment
+        logging.debug("CommentHandler#put for comment %s", comment_id)
+
+
+    @authorized.role("admin")
+    def delete(self,comment_id):
+        logging.debug("Deleting comment %s", comment_id)
+        comment = models.blog.Comment.get(db.Key(comment_id))
+        comment.delete()
+        # TODO really only need to invalidate cache for that one page.
         view.invalidate_cache()
         restful.send_successful_response(self, "/")
 
