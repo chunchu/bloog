@@ -323,15 +323,6 @@ class ArticleHandler(restful.Controller):
         logging.debug("ArticleHandler#get on path (%s)", path)
         render_article(self, path)
 
-    @restful.methods_via_query_allowed    
-    def post(self, path):
-        logging.debug('Comment for article: %s', path)
-        article = db.Query(models.blog.Article).filter('permalink =', path).get()
-        if article: process_comment_submission(self, article)
-        else:
-          logging.warning( 'No article found for comment %s', path )
-          self.error(400)
-
     @authorized.role("admin")
     def put(self, path):
         logging.debug("ArticleHandler#put")
@@ -389,18 +380,6 @@ class BlogEntryHandler(restful.Controller):
                       "month %s, and perm_link %s", 
                       year, month, perm_stem)
         render_article( self, '%s/%s/%s' % (year, month, perm_stem) )
-
-    @restful.methods_via_query_allowed    
-    def post(self, year, month, perm_stem):
-        logging.debug("Adding comment for blog entry %s", self.request.path)
-        permalink = '%s/%s/%s' % (year, month, perm_stem)
-        article = db.Query(models.blog.Article). \
-                     filter('permalink =', permalink).get()
-        if article:
-            process_comment_submission(self, article)
-        else: # no article found for comment
-            logging.warning("No article found for comment to %s", permalink)
-            self.error(400)
 
     @authorized.role("admin")
     def put(self, year, month, perm_stem):
