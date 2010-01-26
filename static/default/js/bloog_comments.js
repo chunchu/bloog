@@ -39,7 +39,6 @@ YAHOO.bloog.initComments = function() {
     }
 
     var handleSuccess = function(parent_id,o) {
-        console.debug("Parent id:", parent_id);
         var response = o.responseText;
         // Insert the comment into the appropriate place then hide dialog.
         if ( ! parent_id ) // Should be inserted at the bottom
@@ -150,6 +149,20 @@ YAHOO.bloog.initComments = function() {
             this.execCommand('inserthtml', '<pre># insert code here</pre><p></p>');
         }, YAHOO.bloog.commentEditor, true);
     });
+    
+    var handleDelete = function(link,e) {
+        e.stopDefault();
+        if ( ! confirm( "Are you sure you want to delete this comment?" ) ) return;
+        YAHOO.util.Connect.asyncRequest( 'DELETE', link.node.href, { 
+            success: function(r) {
+              var commentNode = link.ancestors('li').node;
+              commentNode.parentNode.removeChild(commentNode);
+            }, 
+            failure: function(r) {
+              alert( "Error deleting post: " +  (r.statusText || r.status) );
+            }
+        });
+    };
 
     // Use event bubbling so we don't have to attach listeners to each reply
     $$('div#comments_wrapper').on('click', Ojay.delegateEvent({
@@ -158,7 +171,8 @@ YAHOO.bloog.initComments = function() {
             $('commentDialogForm').action = link.node.href;
             //$('commentKey').value = link.node.href;
             showRTE(link.node);
-        }
+        },
+        'a.deletebtn': handleDelete
     }));
 
 };

@@ -18,6 +18,10 @@
         </div>
         {% if allow_comments %}
         <p class="post_meta">
+            {% if user_is_admin %}
+            <a class="deletebtn" title="Delete Comment" href="/comment/{{ comment.key }}">Delete</a>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            {% endif %}
             <a class="replybtn" title="Reply to Comment" href="/comment/{{ comment.key }}#comment-{{ comment.key }}">Reply</a>
         </p>
         {% endif %}
