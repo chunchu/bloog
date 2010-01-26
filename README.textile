@@ -65,6 +65,7 @@ Quick list of changes I've made from Katz' original code:
 * Use minified JS and CSS resources in hosted mode
 * Summary and full-content Atom feeds
 * Added Tag cloud
+* Admin may delete comments from article view
 * Editor tweaks:
 ** View/edit raw HTML in posts
 ** Inline code tag as well as &lt;pre&gt; blocks
