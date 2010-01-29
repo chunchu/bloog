@@ -93,8 +93,7 @@ YAHOO.bloog.initAdmin = function() {
     };
     
     var handleFailure = function(btn,o) {
-        var msg = o.status ? o.status : 
-          o.message ? o.message : "Unknown error: " + o;
+        var msg = o.message || o.statusText || o.status || ("Unknown error: " + o);
         alert("Error: " + msg );
         // re-enable submit btn in event of failure:
         if( ! btn ) return;
@@ -363,11 +362,11 @@ YAHOO.bloog.initAdmin = function() {
           .setContent("Deleting...");
         YAHOO.util.Connect.asyncRequest( 'DELETE', '#', { 
             success: handleSuccess, 
-            failure: function(resp) {
+            failure: function(xhr) {
               $$(btn).removeClass('yui-button-disabled') // re-enable button 
                 .descendants('button').set( { disabled : false } )
                 .setContent("Delete!");
-              alert("Error deleting post: " + resp.status );
+              alert("Error deleting post: " + (xhr.statusText || xhr.status) );
             }
         });
     };
