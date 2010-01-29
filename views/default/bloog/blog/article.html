@@ -21,8 +21,8 @@
     <div id="article" class="post">
         <div class="postMeta">
             {% if user_is_admin %}
-            <span class="articlebtn"><a id="editbtn" href="#">Edit</a></span>
-            <span class="articlebtn"><a id="deletebtn" href="#">Delete</a></span>
+            <span class="articlebtn"><a id="editbtn" href="/{{ article.permalink }}">Edit</a></span>
+            <span class="articlebtn"><a id="deletebtn" href="/{{ article.permalink }}">Delete</a></span>
             {% endif %}
             {% if article.num_comments %}
             <span class="comments"><a href="/{{ article.permalink }}#comments">{{ article.num_comments }}</a></span>

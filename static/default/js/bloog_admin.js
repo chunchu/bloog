@@ -25,6 +25,7 @@
 YAHOO.bloog.initAdmin = function() {
 
     var showRTE = function(e) {
+        YAHOO.util.Event.stopEvent(e);
         var dialog = YAHOO.bloog.postDialog;
         YAHOO.bloog.http = {};
         switch (this.id) {
@@ -47,10 +48,10 @@ YAHOO.bloog.initAdmin = function() {
                 break;
             case 'editbtn':
                 dialog.setHeader('Submit Article Edit');
-                YAHOO.bloog.http.action = '?_method=PUT';
+                YAHOO.bloog.http.action = this.href + '?_method=PUT';
                 // Get the current article content and populate the dialog
                 YAHOO.util.Connect.initHeader('Accept', 'application/json');
-                YAHOO.util.Connect.asyncRequest('GET', '#', {
+                YAHOO.util.Connect.asyncRequest('GET', this.href, {
                     success: YAHOO.bloog.populateDialog,
                     failure: handleFailure.partial(null)
                 }, null);
@@ -63,7 +64,7 @@ YAHOO.bloog.initAdmin = function() {
         $("postTitle").value = article.title;
         if (article.tags) $("postTags").value = article.tags.join(', ');
         $("postDate").value = article.published;
-        $('legacyID').value = article.legacy_id;
+        $('legacyID').value = article.legacy_id || '';
         YAHOO.bloog.editor.setEditorHTML( article.body );
         YAHOO.bloog.postDialog.render();
         YAHOO.bloog.postDialog.show();
@@ -352,7 +353,7 @@ YAHOO.bloog.initAdmin = function() {
 
     YAHOO.bloog.calendar.selectEvent.subscribe( 
       YAHOO.bloog.dateSelectHandler, YAHOO.bloog.calendar, true );
-    YAHOO.util.Event.addListener( 'postDate', 'click', 
+    YAHOO.util.Event.on( 'postDate', 'click', 
       YAHOO.bloog.calendar.show, YAHOO.bloog.calendar, true );
 
     var handleDelete = function(evt) {
@@ -360,7 +361,7 @@ YAHOO.bloog.initAdmin = function() {
         $$(btn).addClass('yui-button-disabled') // disable button 
           .descendants('button').set( { disabled : true } )
           .setContent("Deleting...");
-        YAHOO.util.Connect.asyncRequest( 'DELETE', '#', { 
+        YAHOO.util.Connect.asyncRequest( 'DELETE', YAHOO.bloog.deleteDialog.href, { 
             success: handleSuccess, 
             failure: function(xhr) {
               $$(btn).removeClass('yui-button-disabled') // re-enable button 
@@ -391,8 +392,11 @@ YAHOO.bloog.initAdmin = function() {
     YAHOO.util.Event.on("newarticle", "click", showRTE);
     YAHOO.util.Event.on("newblog", "click", showRTE);
     YAHOO.util.Event.on("editbtn", "click", showRTE);
-    YAHOO.util.Event.on("deletebtn", "click", 
-      function() { YAHOO.bloog.deleteDialog.show(); });
+    $$("#deletebtn").on("click", function(link,e) { 
+      e.stopEvent();
+      YAHOO.bloog.deleteDialog.href = link.node.href;
+      YAHOO.bloog.deleteDialog.show();
+    });
     
     var handleUpload = function() {
       var form = $$('#imageUploadForm').node;
