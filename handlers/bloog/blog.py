@@ -326,6 +326,9 @@ class ArticleHandler(restful.Controller):
         logging.debug("ArticleHandler#get on path (%s)", path)
         render_article(self, path)
 
+    @restful.methods_via_query_allowed
+    def post(self): pass
+
     @authorized.role("admin")
     def put(self, path):
         logging.debug("ArticleHandler#put")
@@ -383,6 +386,9 @@ class BlogEntryHandler(restful.Controller):
                       "month %s, and perm_link %s", 
                       year, month, perm_stem)
         render_article( self, '%s/%s/%s' % (year, month, perm_stem) )
+
+    @restful.methods_via_query_allowed
+    def post(self): pass
 
     @authorized.role("admin")
     def put(self, year, month, perm_stem):
@@ -490,6 +496,7 @@ class CommentHandler(restful.Controller):
         self.response.headers['Content-Type'] = 'text/plain'
         self.response.out.write('Comment!') # TODO return comment
         
+    @restful.methods_via_query_allowed
     def post(self,parent_comment_id):
         logging.debug("CommentHandler#post; parent: %s", parent_comment_id)
         parent_comment=None
@@ -502,10 +509,8 @@ class CommentHandler(restful.Controller):
         
         process_comment_submission(self, parent_comment)
 
-    @restful.methods_via_query_allowed
     def put(self,comment_id): # update a comment
         logging.debug("CommentHandler#put for comment %s", comment_id)
-
 
     @authorized.role("admin")
     def delete(self,comment_id):
