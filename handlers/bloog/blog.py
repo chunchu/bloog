@@ -145,10 +145,13 @@ def get_sanitizer_func(handler, **kwargs):
     return lambda html : sanitizer.sanitize_html(html, **kwlist)
 
 def do_sitemap_ping():
-    form_fields = { "sitemap": "%s/sitemap.xml" % (config.BLOG['root_url'],) }
-    urlfetch.fetch(url="http://www.google.com/webmasters/tools/ping",
+    try:
+      form_fields = { "sitemap": "%s/sitemap.xml" % (config.BLOG['root_url'],) }
+      urlfetch.fetch(url="http://www.google.com/webmasters/tools/ping",
                    payload=urllib.urlencode(form_fields),
                    method=urlfetch.GET)
+    except Exception, msg:
+      logging.warning( "Error during sitemap ping: %s", msg )
 
 def process_embedded_code(article):
     # TODO -- Check for embedded code, escape opening triangular brackets
@@ -252,7 +255,7 @@ def render_article(handler, path):
         if article and config.BLOG["legacy_entry_redirect"]:
             handler.redirect('/' + article.permalink)
             return
-        else: # not found.  Could do --> handler.redirect('/404.html')
+        else: # not found.
             handler.error(404)
             view.ViewPage(cache_time=36000).render(handler, 
                 {'module_name': 'blog', 'handler_name': 'notfound'})
@@ -499,7 +502,7 @@ class CommentHandler(restful.Controller):
         
         process_comment_submission(self, parent_comment)
 
-    @restful.methods_via_query_allowed    
+    @restful.methods_via_query_allowed
     def put(self,comment_id): # update a comment
         logging.debug("CommentHandler#put for comment %s", comment_id)
 
