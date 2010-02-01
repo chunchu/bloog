@@ -64,7 +64,7 @@ ROUTES = [
     ('/contact/*$', contact.ContactHandler),
     ('/imgstore/?([\w]*)/?', imagestore.PicasaImageHandler \
       if config.BLOG['picasa_image_store'] else imagestore.ImageHandler),
-    ('/tag/(.*)', blog.TagHandler),
+    ('/tag/?(\w+)?', blog.TagHandler),
     (config.BLOG['master_atom_url'] + '/*$', blog.AtomHandler),
     (config.BLOG['legacy_atom_url'] + '/*$', blog.AtomHandler), # old Atom URL from legacy blog (should redirect)
     ('/articles', blog.ArticlesHandler),

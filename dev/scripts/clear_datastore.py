@@ -174,12 +174,9 @@ def main(argv):
             #passwd = getpass.getpass("Password: ")
 
             webserver = HttpRESTClient(auth_cookie)
-            while webserver.delete(app_url + '/Article'):
-                pass
-            while webserver.delete(app_url + '/Comment'):
-                pass
-            while webserver.delete(app_url + '/Tag'):
-                pass
+            while webserver.delete(app_url + '/comment'): pass
+            while webserver.delete(app_url + '/article'): pass # delete articles
+            while webserver.delete(app_url + '/tag'): pass
 
     except UsageError, err:
         print >> sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg)

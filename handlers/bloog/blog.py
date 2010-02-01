@@ -284,6 +284,21 @@ def render_article(handler, path):
                                "use_gravatars": config.BLOG['use_gravatars']
         })
 
+def delete_entity(handler, query):
+    target = query.get()
+    if not target:
+        self.response.set_status(204, 'No more %s entities' % (model_class,))
+        return
+        
+    if hasattr(target, 'title'): title = target.title
+    elif hasattr(target, 'name'): title = target.name
+    else: title = ''
+    logging.debug('Deleting %s %s', model_class, title)
+    target.delete()
+    self.response.out.write('Deleted %s %s' % (model_class, title))
+    view.invalidate_cache()
+    restful.send_successful_response(self, "/")
+
 
 class NotFoundHandler(webapp.RequestHandler):
     def get(self):
@@ -336,48 +351,20 @@ class ArticleHandler(restful.Controller):
 
     @authorized.role("admin")
     def delete(self, path):
-        """
-        By using DELETE on /Article, /Comment, /Tag, you can delete the first 
-         entity of the desired kind.
-        This is useful for writing utilities like clear_datastore.py.  
-        """
-        # TODO: Add DELETE for articles off root like blog entry DELETE.
-        model_class = path.lower()
-        logging.debug("ArticleHandler#delete on %s", path)
-
-        def delete_entity(query):
-            target = query.get()
-            if target:
-                if hasattr(target, 'title'):
-                    title = target.title
-                elif hasattr(target, 'name'):
-                    title = target.name
-                else:
-                    title = ''
-                logging.debug('Deleting %s %s', model_class, title)
-                target.delete()
-                self.response.out.write('Deleted %s %s' % (model_class, title))
-                view.invalidate_cache()
-            else:
-                self.response.set_status(204, 'No more %s entities' % (model_class,))
-                
-        if model_class == 'article':
-            query = models.blog.Article.all()
-            delete_entity(query)
-        elif model_class == 'comment':
-            query = models.blog.Comment.all()
-            delete_entity(query)
-        elif model_class == 'tag':
-            query = models.blog.Tag.all()
-            delete_entity(query)
-        else:
-            article = db.Query(models.blog.Article). \
-                         filter('permalink =', path).get()
-            for key in article.tag_keys:
-                db.get(key).counter.decrement()
-            article.delete()
-            view.invalidate_cache()
-            restful.send_successful_response(self, "/")
+        logging.debug("Deleting article %s", path)
+        if path=='article': # hack to pick out the 'top' article for bulk delete
+          delete_entity(self, models.blog.Comment.all())
+          return
+          
+        article = db.Query(models.blog.Article).filter('permalink =', path).get()
+        if not article: 
+          self.error(404)
+          return
+          
+        for key in article.tag_keys: db.get(key).counter.decrement()
+        article.delete()
+        view.invalidate_cache()
+        restful.send_successful_response(self, "/")
 
 # Blog entries are dated articles
 class BlogEntryHandler(restful.Controller):
@@ -402,6 +389,10 @@ class BlogEntryHandler(restful.Controller):
         logging.debug("Deleting blog entry %s", permalink)
         article = db.Query(models.blog.Article). \
                      filter('permalink =', permalink).get()
+        if not article: 
+            self.error(404)
+            return
+
         for key in article.tag_keys:
             db.get(key).counter.decrement()
         article.delete()
@@ -514,9 +505,18 @@ class CommentHandler(restful.Controller):
 
     @authorized.role("admin")
     def delete(self,comment_id):
+        if not comment_id:
+            return delete_entity( self, models.blog.Comment.all() )
         logging.debug("Deleting comment %s", comment_id)
         comment = models.blog.Comment.get(db.Key(comment_id))
+        
+        if not comment: return self.error(404)
+        
+        article = comment.article
         comment.delete()
+        # TODO replace with counter?
+        article.num_comments -=1 # decrement comment count
+        article.put()
         view.invalidate_cache(comment.article.permalink)
         restful.send_successful_response(self, "/")
 
@@ -531,6 +531,13 @@ class TagHandler(restful.Controller):
             db.Query(models.blog.Article).filter('tags =',        
                                                  tag).order('-published'), 
                                                 {'tag': tag})
+
+    @authorized.role("admin")
+    def delete(self, tagName):
+        if not tagName: query = models.blog.Tag.all()
+        else: query = db.Query(models.blog.Tag).filter('name =', tagName)
+        delete_entity(self,query)
+
 
 class SearchHandler(restful.Controller):
     def get(self):
