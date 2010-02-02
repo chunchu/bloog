@@ -287,17 +287,16 @@ def render_article(handler, path):
 def delete_entity(handler, query):
     target = query.get()
     if not target:
-        self.response.set_status(204, 'No more %s entities' % (model_class,))
-        return
-        
+        return handler.response.set_status(204, 'No more entities')
+
     if hasattr(target, 'title'): title = target.title
     elif hasattr(target, 'name'): title = target.name
     else: title = ''
-    logging.debug('Deleting %s %s', model_class, title)
+    logging.debug('Deleting %s', title)
     target.delete()
-    self.response.out.write('Deleted %s %s' % (model_class, title))
+    handler.response.out.write('Deleted %s' % title)
     view.invalidate_cache()
-    restful.send_successful_response(self, "/")
+    restful.send_successful_response(handler, "/")
 
 
 class NotFoundHandler(webapp.RequestHandler):
@@ -353,14 +352,11 @@ class ArticleHandler(restful.Controller):
     def delete(self, path):
         logging.debug("Deleting article %s", path)
         if path=='article': # hack to pick out the 'top' article for bulk delete
-          delete_entity(self, models.blog.Comment.all())
-          return
-          
+          return delete_entity(self, models.blog.Article.all())
+
         article = db.Query(models.blog.Article).filter('permalink =', path).get()
-        if not article: 
-          self.error(404)
-          return
-          
+        if not article: return self.error(404)
+
         for key in article.tag_keys: db.get(key).counter.decrement()
         article.delete()
         view.invalidate_cache()
@@ -389,9 +385,7 @@ class BlogEntryHandler(restful.Controller):
         logging.debug("Deleting blog entry %s", permalink)
         article = db.Query(models.blog.Article). \
                      filter('permalink =', permalink).get()
-        if not article: 
-            self.error(404)
-            return
+        if not article: return self.error(404)
 
         for key in article.tag_keys:
             db.get(key).counter.decrement()
@@ -430,8 +424,8 @@ def process_comment_submission(handler, parent=None):
           return
           
     if 'article_id' not in property_hash:
-        handler.error(400)
-        return
+        return handler.error(400)
+        
     article = db.Query(models.blog.Article).filter(
         'permalink =', property_hash['article_id'] ).get()
 
@@ -456,8 +450,7 @@ def process_comment_submission(handler, parent=None):
         comment.put()
     except:
         logging.debug("Bad comment: %s", property_hash)
-        handler.error(400)
-        return
+        return handler.error(400)
         
     # Notify the author of a new comment (from matteocrippa.it)
     if config.BLOG['send_comment_notification'] and not users.is_current_user_admin():
@@ -495,8 +488,7 @@ class CommentHandler(restful.Controller):
           parent_comment = models.blog.Comment.get(db.Key(parent_comment_id))
           if not parent_comment:
               logging.warning("No parent comment found for %s", parent_comment_id)
-              self.error(400)
-              return
+              return self.error(400)
         
         process_comment_submission(self, parent_comment)
 
