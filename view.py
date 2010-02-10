@@ -283,7 +283,8 @@ class ViewPage(object):
 
         def each_tag(tag):
           count = tag['count']
-          scale = (count-minC)/(maxC-minC)*.8+1 # Create a float scale between 1 and 2
+          if maxC-minC==0: scale=1 #if all tags have same count, avoid divide-by-zero
+          else: scale = (count-minC)/(maxC-minC)*.8+1 # Create a float scale between 1 and 1.8
           #pct = int((count-minC)/(maxC-minC)*50+100) # alternate % scale between 100 and 150
           return {'name':tag['name'],'count':count,'scale':'%.1f'%scale}
           
