@@ -83,19 +83,17 @@ class ImageHandler(webapp.RequestHandler):
     fileupload = self.request.POST.get("file",None)
     if fileupload is None : return self.error(400)
     
-    # it doesn't seem possible for webob to get the Content-Type header for the 
-    # individual part, so we'll infer it from the file name.
-    contentType = getContentType( fileupload.filename )
-    if contentType is None: 
+    content_type = fileupload.type or getContentType( fileupload.filename )
+    if content_type is None: 
       self.error(400)
       self.response.headers['Content-Type'] = 'text/plain'
       self.response.out.write( "Unsupported image type: " + fileupload.filename )
       return
-    logging.debug( "File upload: %s, mime type: %s", fileupload.filename, contentType )
+    logging.debug( "File upload: %s, mime type: %s", fileupload.filename, content_type )
     
     try:
       (img_name, img_url) = self._store_image(
-        fileupload.filename, fileupload.file, contentType )
+        fileupload.filename, fileupload.file, content_type )
       self.response.headers['Location'] = img_url
       ex=None
     except Exception, err:
@@ -163,20 +161,22 @@ class PicasaImageHandler(ImageHandler):
     import utils.external.elementtree.SimpleXMLTreeBuilder as SimpleXML
     ElementTree.XMLTreeBuilder = SimpleXML.TreeBuilder 
   
-    client = gdata.photos.service.PhotosService()
-    gdata.alt.appengine.run_on_appengine(client)
-    auth = config.BLOG['picasa_auth']
+    auth = config.BLOG['gdata']
     # TODO this could be a non-gmail account (if using Google hosted apps):
-    client.email = auth['user'] + "@gmail.com" 
-    client.password = auth['password']
+    client = gdata.photos.service.PhotosService(
+        email = auth['user'] + '@gmail.com',
+        password = auth['password'], source=auth['source'] )
+    #client.ssl = True
+    gdata.alt.appengine.run_on_appengine(client)
     client.ProgrammaticLogin()
+    #client.ClientLogin( auth['user'], auth['password'], client.source )
     self.client = client
     self.auth = auth
 
   def _store_image(self, name, file, content_type):
     #logging.debug( "Storing image '%s' on Picasa", name )
-    raise Exception("Big oops!")
-    album_url = '/data/feed/api/user/%s/albumid/%s' % ( self.auth['user'], self.auth['album'] )
+    album_url = '/data/feed/api/user/%s/albumid/%s' % ( 
+      self.auth['user'], self.auth['picasa_album'] )
     photo = self.client.InsertPhotoSimple( album_url, name, 
       'Uploaded using the Bloog!', file, content_type=content_type )
     logging.debug( "Uploaded photo to Picasa at %s", photo.content.src )
