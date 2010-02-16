@@ -3,7 +3,7 @@
 # ~/bloog$ dev/gdata-install.sh
 # All necessary dependencies are extracted to utils/external/
 
-version=2.0.6
+version=2.0.7
 dir="gdata-$version/src/gdata"
 file="gdata-$version.tar.gz"
 
@@ -12,7 +12,7 @@ tar -xzf $file
 
 dest="utils/external/gdata"
 mkdir $dest
-cp -r $dir/photos $dir/geo $dir/media $dir/exif $dir/alt \
+cp -r $dir/photos $dir/geo $dir/media $dir/exif $dir/alt $dir/docs \
 	$dir/oauth $dir/tlslite $dir/auth.py $dir/gauth.py $dir/service.py \
 	$dir/urlfetch.py $dir/__init__.py $dest
 
