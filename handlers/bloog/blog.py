@@ -520,9 +520,9 @@ class TagHandler(restful.Controller):
                       encoded_tag)   # No urllib.unquote in AppEngine?
         view.ViewPage().render_query(
             self, 'articles', 
-            db.Query(models.blog.Article).filter('tags =',        
-                                                 tag).order('-published'), 
-                                                {'tag': tag})
+            db.Query(models.blog.Article).filter(
+              'tags =', tag ).order('-published'), 
+            {'tag': tag, 'title': "Articles tagged with'" + tag + "'"} )
 
     @authorized.role("admin")
     def delete(self, tagName):

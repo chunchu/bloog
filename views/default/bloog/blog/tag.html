@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 
+{% block head %}
+<meta name="keywords" content="{{ tag }}" />
+{% endblock %}
+
 {% block first_column %}
     <div id="mainCol" class="fix"><a name="main"></a>
     {% if articles %}
