@@ -146,10 +146,12 @@ def get_sanitizer_func(handler, **kwargs):
 
 def do_sitemap_ping():
     try:
-      form_fields = { "sitemap": "%s/sitemap.xml" % (config.BLOG['root_url'],) }
-      urlfetch.fetch(url="http://www.google.com/webmasters/tools/ping",
-                   payload=urllib.urlencode(form_fields),
-                   method=urlfetch.GET)
+      sitemap = "%s/sitemap.xml" % (config.BLOG['root_url'])
+      # TODO max of 5 sec for each request could make POST take a while...
+      urlfetch.fetch("http://www.google.com/webmasters/tools/ping?" + urllib.urlencode({ "sitemap": sitemap }))
+      urlfetch.fetch("http://www.bing.com/webmaster/ping.aspx?" + urllib.urlencode({ "siteMap": sitemap }))
+      # see http://developer.yahoo.com/search/siteexplorer/V1/updateNotification.html
+      # for Yahoo you need an API key
     except Exception, msg:
       logging.warning( "Error during sitemap ping: %s", msg )
 
