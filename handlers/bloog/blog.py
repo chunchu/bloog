@@ -433,7 +433,7 @@ def process_comment_submission(handler, parent=None):
 
     # Generate a thread string.
     if parent:
-        logging.debug("Comment has parent: %s", parent.key)
+        logging.debug("Comment has parent: %s", parent.key())
         thread_string = parent.next_child_thread_string()
     else:
         logging.debug("Comment is off main article")
@@ -458,7 +458,7 @@ def process_comment_submission(handler, parent=None):
     if config.BLOG['send_comment_notification'] and not users.is_current_user_admin():
         recipient = "%s <%s>" % (config.BLOG['author'], config.BLOG['email'])
         article_link = config.BLOG['root_url'] + "/" + article.permalink
-        comment_link = '%s#comment-%s' % (article_link, comment.key)
+        comment_link = '%s#comment-%s' % (article_link, comment.key())
         body = ('''A new comment has just been posted on %s by %s:\n\n"%s"
                 \n\nReply to the comment here: %s'''
                 % (article_link, comment.name, comment.body, comment_link))
