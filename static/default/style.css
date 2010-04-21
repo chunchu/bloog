@@ -163,10 +163,10 @@ h3#respond{color:#555;margin-bottom:7px;}
 .comment_text blockquote{margin:0 1em;}
 .comment_text a{font-size: 12px !important}
 p.comment_meta .gravatar{vertical-align:top;margin-left:7px;width:32px;height:32px;}
-p.comment_meta span.subject{font-weight:bold;text-transform:uppercase;margin:0 0 0 7px;}
+p.comment_meta span.subject{font-weight:bold;margin:0 0 0 7px;}
 p.comment_meta span.user,
 p.comment_meta span.date{float:right; margin-right:7px; font-size:11px}
-p.comment_meta span.user{font-weight:bold;}
+p.comment_meta span.user{font-weight:bold;font-size:10px}
 p.comment_meta span.date{font-weight:normal;text-align:right;}
 p.post_meta{font-size:11px;text-transform:uppercase;text-align:right;margin:0 7px 0 0;}
 #commentslist li.author{background:#333;color:#CCC;}
