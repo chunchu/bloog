@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # see: http://code.google.com/apis/picasaweb/docs/1.0/developers_guide_python.html#PostPhotos
 import gdata.photos
 import gdata.photos.service
