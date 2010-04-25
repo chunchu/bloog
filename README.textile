@@ -3,9 +3,12 @@ h1. Python Blog for "Google App Engine":http://appengine.google.com/, heavily tw
 
 h2. Instructions
 
-Once you've checked out the code, initialize the external modules like so:
+Once you've checked out the code, initialize the external git modules, and 
+ download some other external dependencies like so:
 
 bc.  $ git submodule init
+ $ dev/yui-install.sh
+ $ dev/gdata-install.sh
 
 h3. Minified Resources
 
@@ -13,7 +16,7 @@ My fork of Bloog uses minified JS and CSS resources when hosted online, but un-
  minified versions when run locally.  This allows you to make quick changes 
  during development (and get accurate line numbers when debugging) while still 
  serving content as quickly as possible to your visitors.  However, this means 
- if you make changes to JS or CSS files, you /must/ run @dev/minify.sh@ before 
+ if you make changes to JS or CSS files, you _must_ run @dev/minify.sh@ before 
  uploading your application via @appcfg.py update@.
 
 h3. Locally Hosted Resources during Development
@@ -46,9 +49,12 @@ Next, you need to determine what album you want to upload images to.  Picasa can
 
 h2. Deploying to AppEngine
 
-Change the @application@ name in app.yaml, and upload your app:
+Change the @application@ name in app.yaml, and upload your app.  If you happened
+ to modify any of the javascript or CSS resources, minify them first:
 
-bc.  $ appcfg.py update .
+bc.  $ dev/minify.sh
+ $ appcfg.py update .
+
 
 For more information on AppEngine, see the "Getting Started documentation":http://code.google.com/appengine/docs/python/gettingstarted/ .
 
