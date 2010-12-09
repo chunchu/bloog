@@ -129,6 +129,8 @@ span.commentbtn a:hover{background:#D33;}
 .entry a:hover img{border-color:#DFDFDF;}
 .entry table tr { padding: 15px 0; }
 .entry table tr.alt { background: #eee; }
+
+.syntaxhighlighter { padding: 3px 0 3px 3px }
 .syntaxhighlighter code { display: inline }
 
 /* style pagination buttons */
