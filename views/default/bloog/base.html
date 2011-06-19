@@ -7,16 +7,21 @@
         <meta name="google-site-verification" content="p0Hu7aK_PFOKsj_IDZsQTD5nyTpV2vahu4tumL0-Eos" />
         <meta name="y_key" content="a5d3acfe27c48b5a" />
         <meta name="msvalidate.01" content="65623C6210AC5823C328C9EAD6A9DD79" />
-        <meta name="description" content="{{ blog.description }}" />
+				<meta name="description" content="{{ blog.description }}" />
+				<meta name="viewport" content="width=device-width" />
         <link rel="alternate" type="application/rss+xml" title="{{ blog.title }} RSS Feed" 
               href="{{ blog.root_url }}{{ blog.master_atom_url }}" />
         <link rel="apple-touch-icon" href="/static/images/apple-touch-icon.png"/>
         {% if debug %}
         <link rel="stylesheet" type="text/css" href="/static/hosted/yui/assets/skins/sam/skin.css" />
         <link rel="stylesheet" href="/static/default/style.css" type="text/css" media="screen,print" />
+        <link rel="stylesheet" href="/static/default/mobile.css" type="text/css" media="handheld" />
+        <link rel="stylesheet" href="/static/default/mobile.css" type="text/css" media="only screen and (max-device-width: 900px)" />
         {% else %}
         <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/{{yui_version}}/build/assets/skins/sam/skin.css" />
         <link rel="stylesheet" href="/static/default/style-min.css" type="text/css" media="screen,print" />
+        <link rel="stylesheet" href="/static/default/mobile.css" type="text/css" media="handheld" />
+        <link rel="stylesheet" href="/static/default/mobile.css" type="text/css" media="only screen and (max-device-width: 900px)" />
         {% endif %}
         {% block head %}
         {% endblock %}
@@ -54,7 +59,7 @@
                     </a>
                 </li>
                 {% endfor %}
-                <li>
+                <li class='atomLink'>
                     <a href="{{ blog.master_atom_url }}" title="Subscribe to the main Atom feed">Atom
                         <br/>
                         <span>Syndication</span>
@@ -72,6 +77,7 @@
                     <li><a href="/2008">2008</a></li>
                     <li><a href="/2009">2009</a></li>
                     <li><a href="/2010">2010</a></li>
+                    <li><a href="/2011">2011</a></li>
                 </ul>
             </div>
 
@@ -117,7 +123,7 @@
                     {% endif %}
 
                     {% block featuredPages1 %}
-                    <div class="middle_links">
+                    <div class="middle_links" id='featuredMyPagesSection'>
                         <h3>{{ featuredMyPages.title }}</h3>
                         <p>
                             {{ featuredMyPages.description }}
@@ -134,7 +140,7 @@
                     {% endblock %}
 
                     {% block tags %}
-                    <div class="middle_links">
+                    <div class="middle_links" id='categoriesSection'>
                         <h3>Categories</h3>
                         <p class="tags">
                         {% if blog_tags %}
@@ -157,7 +163,7 @@
                     {% endblock %}
 
                     {% block featuredPages2 %}
-                    <div class="middle_links">
+                    <div class="middle_links" id='featuredOtherPagesSection'>
                         <h3>{{ featuredOthersPages.title }}</h3>
                         <p>
                             {{ featuredOthersPages.description }}
@@ -174,7 +180,7 @@
                     {% endblock %}
 
                     {% block subscribe %}
-                    <div class="middle_links">
+                    <div class="middle_links" id='subscribeSection'>
                         <h3>Subscribe</h3>
                         <p>
                             Stay updated via syndication.
@@ -216,7 +222,7 @@
                         </a>
                     </li>
                     {% else %}
-                    <li>
+                    <li class='login'>
                         <a href="{{ login_url }}" title="Login">Login
                             <br/>
                             <span>Google id</span>
@@ -231,7 +237,7 @@
                         </a>
                     </li>
                     {% endfor %}
-                    <li>
+                    <li class='atomLink'>
                         <a href="{{ blog.master_atom_url }}" title="Subscribe to the main Atom feed">Atom
                             <br/>
                             <span>Syndication</span>

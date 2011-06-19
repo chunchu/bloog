@@ -1,0 +1,85 @@
+/* CSS overrides for mobile browsers, applied using a 'media' query */
+@charset "utf-8";
+
+body { font-size:12pt; }
+
+h1 { font-size:14.5pt }
+h2 { font-size:14pt }
+h3 { font-size:13pt }
+h4,h5 { font-size:100% }
+
+#wrapper {
+	margin: 0 auto 0 auto;
+	width: auto;
+	text-align: left
+}
+
+#masthead { background-repeat:repeat; width:auto }
+#masthead h1 { 
+	font-size:180%;
+	margin-left:3px;
+}
+
+#authorBlurb {
+	display:none;
+	font-size:80%;
+	text-align:right;
+	margin-right:3px;
+}
+#authorBlurb img { display: none }
+
+.nav { width:auto }
+.nav li { width:auto }
+.nav li a { font-size: 100%; width:auto; padding: .7em .25em }
+.nav li a:hover { width:auto }
+.nav li a span { font-size: 60%; display:none }
+.nav li.skip, .nav li.atomLink, .nav li.login { display:none }
+
+#archives li { width:auto }
+#archives li a { width:auto;padding: .2em .5em }
+
+#mid { width:auto }
+
+#mainCol { 
+	width: auto;
+	border-bottom: 2px solid #bbb;
+}
+
+#article, #more_reading, #comments_wrapper { padding:0 .5em }
+.post { padding:0 .5em }
+.postMeta { font-size: 100%; width:100% }
+
+#comments { padding:0 }
+p.commentbtn, span.commentbtn { font-size:auto; display:none }
+.comment_meta, .comment_meta .user { font-size: 80% }
+#comments .replybtn { font-size:80%; display:none }
+#comments_wrapper li.indent2 { margin-left: 1em; }
+#commentslist .comment_text { clear: both; }
+
+#midCol {
+	float:auto;
+	margin:.1em;
+	padding:.6em;
+	width:auto
+}
+
+#more_reading { 
+	font-size: 80%;
+	font-weight: bold;
+	margin-right:.1em
+}
+
+
+#midCol .middle_links { margin-top:2em }
+#midCol ul { list-style:none } /* square inside none } */
+.middle_links ul li { background:none; padding: 4px 0 }
+
+#twoCol { width:100%; margin:1em 0 0 }
+
+#footer { width:100% }
+
+#featuredOtherPagesSection { display:none }
+
+#searchWrap #s { width: 80% }
+#searchsubmit { height: 1.6em }
+#attribution #downloadlinks p { font-size: 40% }
