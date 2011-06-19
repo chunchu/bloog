@@ -10,3 +10,4 @@ static/hosted
 utils/external/gdata
 utils/external/atom
 utils/external/elementtree
+*.swp
