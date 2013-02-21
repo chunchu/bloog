@@ -31,6 +31,10 @@ import sys
 sys.path.insert(0, config.APP_ROOT_DIR)
 sys.path.insert(1, os.path.join(config.APP_ROOT_DIR, 'utils/external'))
 
+os.environ['DJANGO_SETTINGS_MODULE'] = 'config'
+from google.appengine.dist import use_library
+use_library('django', '0.96')
+
 import logging
 #import wsgiref.handlers
 from firepython.middleware import FirePythonWSGI
@@ -49,6 +53,13 @@ if config.DEBUG: logging.getLogger().setLevel(logging.DEBUG)
 # Log a message each time this module get loaded.
 logging.info('Loading %s, app version = %s',
              __name__, os.getenv('CURRENT_VERSION_ID'))
+
+
+class ProfileHandler(webapp.RequestHandler):
+    '''simple profile redirect to Google Plus'''
+    def get(self):
+        self.redirect('https://plus.google.com/u/0/104877542114452726943/about')
+
 
 ROUTES = [
     ('/*$', blog.RootHandler),
@@ -69,6 +80,7 @@ ROUTES = [
     (config.BLOG['legacy_atom_url'] + '/*$', blog.AtomHandler), # old Atom URL from legacy blog (should redirect)
     ('/articles', blog.ArticlesHandler),
     ('/sitemap.xml', blog.SitemapHandler),
+    ('/%2B$', ProfileHandler), # http://blog.thomnichols.org/+
     ('/(.*)', blog.ArticleHandler)]
 
 
