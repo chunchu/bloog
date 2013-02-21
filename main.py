@@ -37,7 +37,6 @@ use_library('django', '0.96')
 
 import logging
 #import wsgiref.handlers
-from firepython.middleware import FirePythonWSGI
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import webapp
 from google.appengine.api import users
@@ -87,8 +86,6 @@ ROUTES = [
 def main():
     path = timings.start_run()
     application = webapp.WSGIApplication(ROUTES, debug=config.DEBUG)
-    if users.is_current_user_admin():
-        application = FirePythonWSGI(application)
     # Attempt to fix KeyError: 'CONTENT_TYPE' that is appearing in logs; see:
     # http://code.google.com/p/googleappengine/issues/detail?id=2040
     #wsgiref.handlers.CGIHandler().run(application)
