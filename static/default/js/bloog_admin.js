@@ -125,10 +125,11 @@ YAHOO.bloog.initAdmin = function() {
 
     YAHOO.bloog.postDialog = new YAHOO.widget.Dialog(
         "postDialog", {
-            width: "520px",
+            width: "550px",
             fixedcenter: true,
             visible: false,
             modal: true,
+//            draggable: true,
             constraintoviewpoint: true,
             effect: dialogEffect,
             buttons: [ { text: "Submit", handler: handleSubmit, isDefault:true },

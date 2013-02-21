@@ -51,9 +51,10 @@ form p, form div.p{margin-bottom:7px;}
 #masthead{padding:5px 0; background:transparent url(images/masthead-bg.png) top left no-repeat}
 #masthead h1 a{width:300px;float:left;margin:12px 0 0 0;}
 #masthead h1 a em{font-style:normal;color:#555;}
-#authorBlurb img{float:right;width:48px;height:48px;}
+#authorBlurb img{float:right;width:48px;height:48px}
 #authorIntro a{font-weight:bold;} 
-#authorIntro{line-height:1.4em;width:400px;float:right;margin:8px 0 0 0;}
+#authorIntro{line-height:1.4em;width:400px;float:right;margin:8px 6px 0 0;
+ color:#ccc;text-align:right;font-weight:700;margin-top: 13px;display:none}
 ul.nav{list-style:none;background:#EEE;}
 .nav li{border-right:1px solid #DDD;float:left;display:block;width:100px;}
 .nav li a{font-size:11px;outline:none;color:#333;text-decoration:none;display:block;padding:5px 0 12px 5px;width:99px;text-transform:uppercase;}

@@ -49,6 +49,8 @@ h4,h5 { font-size:100% }
 .post { padding:0 .5em }
 .postMeta { font-size: 100%; width:100% }
 
+.entry img { max-width:100% !important }
+
 #comments { padding:0 }
 p.commentbtn, span.commentbtn { font-size:auto; display:none }
 .comment_meta, .comment_meta .user { font-size: 80% }
@@ -69,7 +71,6 @@ p.commentbtn, span.commentbtn { font-size:auto; display:none }
 	margin-right:.1em
 }
 
-
 #midCol .middle_links { margin-top:2em }
 #midCol ul { list-style:none } /* square inside none } */
 .middle_links ul li { background:none; padding: 4px 0 }
@@ -82,4 +83,15 @@ p.commentbtn, span.commentbtn { font-size:auto; display:none }
 
 #searchWrap #s { width: 80% }
 #searchsubmit { height: 1.6em }
+
+#htmlform p small { font-size: 11pt }
+#htmlform #message { width:100% }
+/* FIXME: This is an image, not a text button: */
+#htmlform input#submit { font-size:11pt }
+
+input[type='text'], textarea {
+	border-radius: 5px;
+	-webkit-border-radius: 5px
+}
+
 #attribution #downloadlinks p { font-size: 40% }
