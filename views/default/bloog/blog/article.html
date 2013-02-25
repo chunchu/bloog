@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load description %}
 
 {% block head %}
 {% if article.embedded_code %}
@@ -30,8 +31,10 @@
             <span class="date">{{ article.published.date }}</span>
         </div>
         <h2><a id="blogtitle" href="/{{ article.permalink }}" title="{{ article.title }}">{{ article.title }}</a></h2>
-        <div id="blogbody" class="entry">
-            {{ article.html }}
+				<div id="blogbody" class="entry">
+					{% autoescape off %}
+					{{ article.html }}
+					{% endautoescape %}
         </div>
     </div>
     <div id="more_reading">

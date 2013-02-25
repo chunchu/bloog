@@ -7,7 +7,7 @@
             <h2>Articles from the month {{ month }}/{{ year }}</h2>
         </div>
         {% for article in articles %}
-            {% include '../article_excerpt.html' %}
+            {% include 'article_excerpt.html' %}
         {% endfor %}
     {% else %}
         <div class="post">

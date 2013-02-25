@@ -27,9 +27,9 @@ __author__ = 'Matteo Crippa'
 
 import re
 
-from google.appengine.ext import webapp
+from django import template
 
-register = webapp.template.create_template_register()
+register = template.Library()
 
 def description(value):
 	return re.sub(r'<[^>]*?>', '', value).replace("\n","")[0:150]	

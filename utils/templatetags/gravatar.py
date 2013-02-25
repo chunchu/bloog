@@ -27,9 +27,9 @@ __author__ = 'Matteo Crippa'
 
 import md5
 
-from google.appengine.ext import webapp
+from django import template
 
-register = webapp.template.create_template_register()
+register = template.Library()
 
 def gravatar(email):
 	return md5.new(email).hexdigest()	

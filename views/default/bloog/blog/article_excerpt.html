@@ -11,6 +11,8 @@
       title="{{ article.title }}">{{ article.title }}</a></h2>
     
     <div class="entry">
-        <p>{{ article.html|truncatewords_html:68 }}</p>
+      {% autoescape off %}
+			<p>{{ article.html|truncatewords_html:68 }}</p>
+      {% endautoescape %}
     </div>
 </div>

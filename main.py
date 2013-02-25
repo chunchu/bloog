@@ -32,19 +32,14 @@ sys.path.insert(0, config.APP_ROOT_DIR)
 sys.path.insert(1, os.path.join(config.APP_ROOT_DIR, 'utils/external'))
 
 os.environ['DJANGO_SETTINGS_MODULE'] = 'config'
-from google.appengine.dist import use_library
-use_library('django', '0.96')
+from django.conf import settings
+settings._setup() #needed to initialize template tags
 
 import logging
 #import wsgiref.handlers
-from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import webapp
 from google.appengine.api import users
 from handlers.bloog import blog, contact, cache_stats, timings, imagestore
-
-# Import custom django libraries
-webapp.template.register_template_library('utils.django_libs.gravatar')
-webapp.template.register_template_library('utils.django_libs.description')
 
 # Configure logging for debug if in dev environment
 if config.DEBUG: logging.getLogger().setLevel(logging.DEBUG)
@@ -82,14 +77,11 @@ ROUTES = [
     ('/%2B$', ProfileHandler), # http://blog.thomnichols.org/+
     ('/(.*)', blog.ArticleHandler)]
 
+application = webapp.WSGIApplication(ROUTES, debug=config.DEBUG)
 
 def main():
     path = timings.start_run()
-    application = webapp.WSGIApplication(ROUTES, debug=config.DEBUG)
-    # Attempt to fix KeyError: 'CONTENT_TYPE' that is appearing in logs; see:
-    # http://code.google.com/p/googleappengine/issues/detail?id=2040
-    #wsgiref.handlers.CGIHandler().run(application)
-    run_wsgi_app(application)
+    application.run()
     timings.stop_run(path)
 
 if __name__ == "__main__":

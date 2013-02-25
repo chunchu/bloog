@@ -12,6 +12,9 @@ logging.info("Starting application in DEBUG mode: %s", DEBUG)
 #  Bloog source code updates.
 # Do change blog or page dictionaries at the bottom of this config module.
 
+# This is used for django to find the custom templatetags:
+INSTALLED_APPS = ('utils')
+
 BLOG = {
     "bloog_version": "0.8",
     "html_type": "application/xhtml+xml",
@@ -22,7 +25,7 @@ BLOG = {
     # application due to mail api restrictions.
     "email": "tmnichols@gmail.com",
     "tagline": "Technology is evolution outside the gene pool",
-    "description": """I'm a Software Engineer living near Providence, RI. &#160;
+    "description": """I'm a Software Engineer living near Providence, RI. 
           I code for work, freelance, and when an idea strikes me, sometimes 
           just for fun.""",
     "root_url": "http://blog.thomnichols.org",
@@ -66,8 +69,10 @@ BLOG = {
     "legacy_entry_redirect": True,
     
     "picasa_image_store": False, # if false, will use local datastore for uploaded images
-    "picasa_auth": { 'user':'CHANGEME', 
+    "gdata": { 'user':'CHANGEME', 
         'password':'CHANGEME',  # your google accounts password :(
+        'source' : 'tomstrummer-bloog-v0.8', #tells Google what app is using the service
+        #this must be an ID or 'default' (not album name); see dev/scripts/picasa_get_album_id.py
         'album':'default' } #this must be 'default' or an ID (not name); see dev/scripts/picasa_get_album_id.py
 }
 
@@ -77,7 +82,7 @@ PAGE = {
     "yui_version": '2.8.0r4',
     "author_name": 'Thom',
     "author_email": BLOG['email'],
-    "ga_tracker": "UA-10492632", # Google Analytics tracker code
+    "ga_tracker": "UA-10492632-1", # Google Analytics tracker code
     "navlinks": [
         { "title": "Articles", "description": "Bits of Info", 
           "url": "/articles"},
@@ -88,33 +93,36 @@ PAGE = {
         "title": "About Me",
         "description": BLOG['description'],
         "entries": [
+            { "title": "Portfolio", 
+              "url": BLOG['root_url']+'/portfolio', 
+              "description": "Work I've done" },
+            { "title": "Profile", 
+              "url": BLOG['root_url']+'/+', 
+              "description": "on Google+" },
             { "title": "On Twitter", 
-              "url": "http://twitter.com/tom_nichols", 
+              "url": "http://twitter.com/thom_nic", 
               "description": "Twitter Feed" },
             { "title": "On GitHub", 
               "url": "http://github.com/tomstrummer", 
-              "description": "Projects hosted on Github" },
-            { "title": "HTTP Builder", 
-              "url": "http://groovy.codehaus.org/modules/http-builder", 
-              "description": "One of my more significant open-source projects" },
-            { "title": "My Google Reader Feed", 
-              "url": "https://www.google.com/reader/shared/00209487153858041827", 
-              "description": "Interesting articles worth passing along" }
+              "description": "Projects on Github" }
         ]
     },
     "featuredOthersPages": {
         "title": "Additional Links",
         "description": "Miscellaneous Resources",
         "entries": [
-            { "title": "Google App Engine", 
-              "url": "http://code.google.com/appengine/", 
-              "description": "The mothership" },
+            { "title": "Marco Polo", 
+              "url": "http://marcopolo.thomnichols.org", 
+              "description": "Explore your social network!" },
+            { "title": "HTTP Builder", 
+              "url": "http://groovy.codehaus.org/modules/http-builder", 
+              "description": "HTTP/ REST client API for Groovy" },
+            { "title": "Python Web Console", 
+              "url": "http://pythonwebconsole.thomnichols.org", 
+              "description": "Run Python from your browser" },
             { "title": "Bloog", 
               "url": "http://bloog.billkatz.com/", 
-              "description": "Customize your own blog" },
-            { "title": "Groovy", 
-              "url": "http://groovy.codehaus.org", 
-              "description": "Dynamic high-level language for the JVM" }
+              "description": "Customize your own blog" }
         ]
     },
 }

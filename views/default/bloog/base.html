@@ -88,7 +88,7 @@
                 {% block first_column %}
                 <div id="mainCol" class="fix"><a name="main"></a>
                 {% for article in articles %}
-                    {% include 'article_excerpt.html' %}
+                    {% include 'blog/article_excerpt.html' %}
                 {% endfor %}
                 {% if not articles %}
                     {% include 'bloog_intro.html' %}
