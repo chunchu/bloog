@@ -68,7 +68,7 @@ import django.template.loader
 
 from google.appengine.ext import webapp
 
-def render(template_path, template_dict, debug=False, template_dirs=()):
+def render(template_path, template_dict, debug=False, template_dirs=[]):
   """Renders the template at the given path with the given dict of values.
 
   Example usage:
