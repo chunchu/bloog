@@ -46,16 +46,12 @@ import urllib
 
 import logging
 
-from google.appengine.ext import webapp
-from google.appengine.api import users
-from google.appengine.ext import db
-from google.appengine.ext.webapp import template
-from google.appengine.api import mail
-from google.appengine.api import urlfetch
+from google.appengine.ext import webapp, db
+from google.appengine.api import users, mail, urlfetch
+#from google.appengine.ext.webapp import template
 
 from handlers import restful
-from utils import authorized
-from utils import sanitizer
+from utils import authorized, sanitizer, template
 import captcha
 import models
 import view
