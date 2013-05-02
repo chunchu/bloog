@@ -46,10 +46,6 @@ http://www.djangoproject.com/documentation/templates/
 import logging
 import os
 
-try:
-  from django import v0_96
-except ImportError:
-  pass
 import django
 
 import django.conf
