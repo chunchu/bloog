@@ -31,13 +31,13 @@ import logging
 import string
 import time
 
-from google.appengine.api import users
+from google.appengine.api import users, mail
 
 from handlers import restful
 import view
 import config
 
-RANDOM_TOKEN = '08yzek30krn4l' + config.BLOG['root_url']
+RANDOM_TOKEN = '08yzek30krn4lq' + config.BLOG['root_url']
 
 class ContactHandler(restful.Controller):
     def get(self):
@@ -49,13 +49,28 @@ class ContactHandler(restful.Controller):
                            'token': RANDOM_TOKEN, 'curtime': time.time()})
 
     def post(self):
-        from google.appengine.api import mail
 
-        if self.request.get('token') != RANDOM_TOKEN or \
-           time.time() - string.atof(self.request.get('curtime')) < 2.0:
-            logging.info("Aborted contact mailing because form submission "
-                          "was less than 2 seconds.")
-            self.error(403)
+        spammy = False
+        # attempt various spam mitigation tactics:
+        if self.request.get('token') != RANDOM_TOKEN:
+            logging.info("SPAM: token check failed")
+            spammy = True
+
+        elif time.time() - string.atof(self.request.get('curtime')) < 2.0:
+            logging.info("SPAM: form submission was less than 2 seconds.")
+            spammy = True
+
+        elif self.request.get('p') != 'np': # added by JS
+            logging.info("SPAM: p!=np")
+            spammy = True
+
+        elif self.request.get('honey'): # this should not be visible
+            logging.info("SPAM: honeypot: %s", self.request.get('honey'))
+            spammy = True
+
+        if spammy: # just return "OK" don't leave an indication that submission failed.
+            view.ViewPage(cache_time=36000).render(self)
+            return
 
         user = users.get_current_user()
         sender = user.email() if user else config.BLOG['email']

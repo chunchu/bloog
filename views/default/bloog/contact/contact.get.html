@@ -1,4 +1,11 @@
 {% extends "base.html" %}
+
+{% block head %}
+<style type='text/css'>
+.honey {height:0;overflow:hidden}
+</style>
+{% endblock %}
+
 {% block first_column %}
 <div id="mainCol" class="fix">
     <a name="main"></a>
@@ -20,7 +27,8 @@
                 <label for="email"><small>Email</small></label></p>
             <p><input type="text" id="subject" name="subject" size="22" tabindex="3" />
                 <label for="subject"><small>Subject</small></label></p>
-            <p><textarea id="message" name="message" cols="60" rows="10" tabindex="4">Please enter a message.</textarea></p>
+						<p><textarea id="message" name="message" cols="60" rows="10" tabindex="4">Please enter a message.</textarea></p>
+						<p class='honey'><input type='text' id='honey' name='honey'></p>
             <p><input name="submit" type="image" src="/static/default/images/btn_submit.gif" alt="Submit" id="submit" tabindex="5" value="Submit" /></p>
             <input type="hidden" name="token" value="{{ token }}" />
             <input type="hidden" name="curtime" value="{{ curtime|floatformat }}" />
@@ -28,4 +36,17 @@
         {% endifequal %}
     </div>
 </div>
+{% endblock %}
+
+{% block end_body %}
+<script type='text/javascript'>
+//var e = document.createElement('input')
+//e.setAttribute('type','hidden')	
+//e.setAttribute('name','p')
+//e.setAttribute('value','np')
+//document.getElementById('htmlform').appendChild(e)
+Ojay.onDOMReady( function() {	
+	$$('#htmlform').insert('<input type="hidden" name="p" value="np" />','bottom')
+})
+</script>
 {% endblock %}
